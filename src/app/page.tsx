@@ -27,7 +27,7 @@ export default function Home() {
         const promptsFromSheet = await fetchPromptsFromSheet();
 
         // Check if the returned data indicates a specific error configured in the action
-        if (promptsFromSheet.length > 0 && promptsFromSheet[0].id.startsWith('error-') || promptsFromSheet[0].id.startsWith('config-error-')) {
+        if (promptsFromSheet.length > 0 && (promptsFromSheet[0].id.startsWith('error-') || promptsFromSheet[0].id.startsWith('config-error-') || promptsFromSheet[0].id.startsWith('fetch-error-'))) {
           setErrorTitle(promptsFromSheet[0].title || 'Error');
           setError(promptsFromSheet[0].text);
           setPrompts([]); // Set empty prompts on error
@@ -65,6 +65,18 @@ export default function Home() {
     setSearchTerm(event.target.value);
   };
 
+  // Helper function to render multiline error messages
+  const renderErrorMessage = (message: string | null) => {
+    if (!message) return null;
+    return message.split('\n').map((line, index) => (
+      <React.Fragment key={index}>
+        {line}
+        {index < message.split('\n').length - 1 && <br />}
+      </React.Fragment>
+    ));
+  };
+
+
   return (
     <main className="container mx-auto px-4 py-8">
       <header className="mb-8 text-center">
@@ -90,14 +102,25 @@ export default function Home() {
 
        {/* Display error message if fetch failed */}
        {error && !isLoading && (
-         <div className="text-center py-10 text-destructive bg-destructive/10 border border-destructive rounded-md p-4 mb-6">
-           <p className="font-semibold">{errorTitle}</p>
-           <p>{error}</p>
+         <div className="text-left py-4 px-6 text-destructive bg-destructive/10 border border-destructive rounded-md mb-6">
+           <p className="font-semibold text-lg mb-2">{errorTitle}</p>
+           {/* Use pre-wrap to preserve newlines and formatting from the error message */}
+           <p className="text-sm whitespace-pre-wrap">{renderErrorMessage(error)}</p>
+           {/* Specific guidance based on error title */}
            {errorTitle === 'Configuration Error' && (
-              <p className="text-sm mt-2">Make sure your <code className="bg-destructive/20 px-1 rounded">.env</code> file is correctly set up in the project root directory.</p>
+              <p className="text-sm mt-2">Make sure your <code className="bg-destructive/20 px-1 rounded">.env</code> file is correctly set up in the project root directory with all required variables (NEXT_PUBLIC_GOOGLE_PRIVATE_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL, NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID).</p>
            )}
-           {errorTitle === 'Error Loading Prompts' && (
-             <p className="text-sm mt-2">Please verify your Google Sheet ID, Sheet Name, and ensure the service account email has access to the sheet.</p>
+           {errorTitle === 'Authentication Error' && (
+              <p className="text-sm mt-2">Double-check the format of the <code className="bg-destructive/20 px-1 rounded">NEXT_PUBLIC_GOOGLE_PRIVATE_KEY</code> in your <code className="bg-destructive/20 px-1 rounded">.env</code> file. It must contain literal `\n` characters for newlines.</p>
+           )}
+           {errorTitle === 'Permission Denied' && (
+             <p className="text-sm mt-2">Ensure the Google Service Account email listed in the error message has been shared with your Google Sheet with at least 'Viewer' permissions.</p>
+           )}
+            {errorTitle === 'Spreadsheet Not Found' && (
+             <p className="text-sm mt-2">Verify that the `NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID` in your `.env` file is correct.</p>
+           )}
+           {errorTitle === 'Error Loading Prompts' && !error.includes('PEM_read_bio_PrivateKey') && !error.includes('PERMISSION_DENIED') && !error.includes('Requested entity was not found') && (
+             <p className="text-sm mt-2">Please verify your Google Sheet ID, Sheet Name in `.env`, and ensure the service account email has access to the sheet.</p>
            )}
          </div>
        )}
@@ -136,7 +159,7 @@ export default function Home() {
            {/* Message shown if initial fetch yielded no prompts (and no error) */}
            {!isLoading && !error && prompts.length === 0 && (
              <p className="text-center col-span-full text-muted-foreground py-10">
-                No prompts are currently available in the library, or the Google Sheet is empty/inaccessible.
+                No prompts are currently available in the library, or the Google Sheet is empty/inaccessible. Check sheet permissions and `.env` configuration if this persists.
              </p>
            )}
          </div>

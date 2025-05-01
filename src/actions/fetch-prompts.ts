@@ -33,10 +33,14 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
      // throw new Error(`Missing Google API credentials or Spreadsheet ID: ${missingVars}`);
   }
 
+  // Log the client email to ensure it's being read correctly. Don't log the private key.
+  console.log(`Using Client Email: ${clientEmail}`);
+  console.log(`Private Key is present: ${!!privateKey}`);
+
   // Ensure the private key includes literal newlines if copied directly from the JSON file.
   // The .env file should look like: NEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-  // The google-auth-library handles the literal newlines correctly. Removed the replace call.
-   const processedPrivateKey = privateKey;
+  // The google-auth-library handles the literal newlines correctly.
+  const processedPrivateKey = privateKey;
 
   try {
     console.log('Authenticating with Google...');
@@ -93,11 +97,24 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
     console.error('Error fetching data from Google Sheets API:', err);
     // Log specific details if available
     let detailedErrorMessage = 'Could not load prompts from Google Sheets. Please check server logs for details.';
+    let errorTitle = 'Error Loading Prompts';
+
     if (err.message) {
       detailedErrorMessage += ` Error Message: ${err.message}`;
     }
     if (err.code) {
        detailedErrorMessage += ` Error Code: ${err.code}`;
+       // Provide more specific guidance for common errors
+       if (err.code === 'ERR_OSSL_UNSUPPORTED' || (err.message && err.message.includes('PEM_read_bio_PrivateKey'))) {
+          errorTitle = 'Authentication Error';
+          detailedErrorMessage += `\n\nThis often indicates an issue with the format of the NEXT_PUBLIC_GOOGLE_PRIVATE_KEY in your .env file. Ensure it's enclosed in double quotes and includes the literal '\\n' characters for newlines, exactly as copied from the Google Cloud JSON key file. Example format:\nNEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n-----END PRIVATE KEY-----\\n"`;
+       } else if (err.code === 403 || (err.message && err.message.includes('PERMISSION_DENIED'))) {
+           errorTitle = 'Permission Denied';
+           detailedErrorMessage += `\n\nPlease ensure the service account email ('${clientEmail}') has been granted 'Viewer' (or 'Editor') access to the Google Sheet with ID '${spreadsheetId}'.`;
+       } else if (err.code === 404 || (err.message && err.message.includes('Requested entity was not found'))) {
+           errorTitle = 'Spreadsheet Not Found';
+           detailedErrorMessage += `\n\nPlease verify that the NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') is correct and that the spreadsheet exists.`;
+       }
     }
     if (err.errors) {
         console.error('Google API Errors:', err.errors);
@@ -105,7 +122,7 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
 
     // Provide fallback or error indication
     return [
-       { id: 'fetch-error-1', title: 'Error Loading Prompts', text: detailedErrorMessage, category: 'Error' },
+       { id: 'fetch-error-1', title: errorTitle, text: detailedErrorMessage, category: 'Error' },
     ];
     // Option 2: Rethrow the error to be caught by the caller in production
     // throw new Error(`Failed to fetch prompts from Google Sheets: ${err.message || 'Unknown error'}`);

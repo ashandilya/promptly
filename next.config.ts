@@ -18,12 +18,11 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-   // Note: Exposing sensitive keys like private keys directly to the client-side
-   // using NEXT_PUBLIC_ is generally NOT recommended for security reasons.
-   // It's better to fetch data via an API route on the server-side.
-   // However, for simplicity in this example, we'll allow them.
-   // Consider moving the Google Sheets fetching logic to an API route
-   // (e.g., /api/prompts) in a real-world application.
+   // Note: While the Google Sheets fetching now happens server-side via a Server Action,
+   // these environment variables are still prefixed with NEXT_PUBLIC_.
+   // For improved security, if these variables are *only* used server-side,
+   // remove the NEXT_PUBLIC_ prefix from both here and your .env file(s).
+   // Access them directly via `process.env.YOUR_VARIABLE_NAME` in the server action.
    env: {
     NEXT_PUBLIC_GOOGLE_PRIVATE_KEY: process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY,
     NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL,

@@ -16,7 +16,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    // Added suppressHydrationWarning to mitigate hydration errors potentially caused by browser extensions
+    <html lang="en" suppressHydrationWarning>
       {/* Removed Geist font variables from body className */}
       <body className={`antialiased`}>
         {children}

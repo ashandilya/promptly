@@ -68,10 +68,11 @@ export default function Home() {
   // Helper function to render multiline error messages
   const renderErrorMessage = (message: string | null) => {
     if (!message) return null;
-    return message.split('\n').map((line, index) => (
+    // Split by newline characters to render them as <br /> tags
+    return message.split('\n').map((line, index, arr) => (
       <React.Fragment key={index}>
         {line}
-        {index < message.split('\n').length - 1 && <br />}
+        {index < arr.length - 1 && <br />}
       </React.Fragment>
     ));
   };
@@ -111,7 +112,17 @@ export default function Home() {
               <p className="text-sm mt-2">Make sure your <code className="bg-destructive/20 px-1 rounded">.env</code> file is correctly set up in the project root directory with all required variables (NEXT_PUBLIC_GOOGLE_PRIVATE_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL, NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID).</p>
            )}
            {errorTitle === 'Authentication Error' && (
-              <p className="text-sm mt-2">Double-check the format of the <code className="bg-destructive/20 px-1 rounded">NEXT_PUBLIC_GOOGLE_PRIVATE_KEY</code> in your <code className="bg-destructive/20 px-1 rounded">.env</code> file. It must contain literal `\n` characters for newlines.</p>
+              <div className="text-sm mt-2 space-y-1">
+                <p>This usually means the <code className="bg-destructive/20 px-1 rounded">NEXT_PUBLIC_GOOGLE_PRIVATE_KEY</code> in your <code className="bg-destructive/20 px-1 rounded">.env</code> file is formatted incorrectly.</p>
+                <p><strong>Important:</strong></p>
+                <ul className="list-disc list-inside pl-4">
+                    <li>The entire key, including <code className="bg-destructive/20 px-1 rounded">-----BEGIN PRIVATE KEY-----</code> and <code className="bg-destructive/20 px-1 rounded">-----END PRIVATE KEY-----</code>, must be enclosed in <strong className="font-semibold">double quotes</strong> (`"`).</li>
+                    <li>The newline characters within the key <strong className="font-semibold">must be represented as literal `\n` characters</strong>, exactly as copied from the Google Cloud JSON key file.</li>
+                </ul>
+                <p className="mt-1">Example format in <code className="bg-destructive/20 px-1 rounded">.env</code>:</p>
+                <pre className="bg-destructive/20 p-2 rounded text-xs overflow-x-auto"><code>{`NEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nYOUR_KEY_LINES_HERE\\nMORE_KEY_LINES_HERE\\n-----END PRIVATE KEY-----\\n"`}</code></pre>
+                <p>Please double-check your <code className="bg-destructive/20 px-1 rounded">.env</code> file, save it, and restart the development server (`npm run dev`).</p>
+              </div>
            )}
            {errorTitle === 'Permission Denied' && (
              <p className="text-sm mt-2">Ensure the Google Service Account email listed in the error message has been shared with your Google Sheet with at least 'Viewer' permissions.</p>

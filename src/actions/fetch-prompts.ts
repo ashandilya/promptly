@@ -25,7 +25,7 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
       !clientEmail ? 'NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL' : null,
       !spreadsheetId ? 'NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID' : null,
     ].filter(Boolean).join(', ');
-    console.error(`Missing Google API credentials or Spreadsheet ID in environment variables: ${missingVars}`);
+    console.error(`Configuration Error: Missing Google API credentials or Spreadsheet ID in environment variables: ${missingVars}`);
      return [
        { id: 'config-error-1', title: 'Configuration Error', text: `Missing required environment variables: ${missingVars}. Please check your .env file and server configuration.`, category: 'Setup Error' },
      ];
@@ -35,7 +35,10 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
 
   // Log the client email to ensure it's being read correctly. Don't log the private key.
   console.log(`Using Client Email: ${clientEmail}`);
+  // Avoid logging the key itself, just confirm its presence
   console.log(`Private Key is present: ${!!privateKey}`);
+  // Log first and last few chars for basic format check if needed, but be cautious
+  // console.log(`Private Key starts with: ${privateKey.substring(0, 30)}... ends with: ...${privateKey.substring(privateKey.length - 30)}`);
 
   // Ensure the private key includes literal newlines if copied directly from the JSON file.
   // The .env file should look like: NEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
@@ -94,8 +97,9 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
     return prompts;
 
   } catch (err: any) {
+    // Log the full error object for detailed debugging
     console.error('Error fetching data from Google Sheets API:', err);
-    // Log specific details if available
+
     let detailedErrorMessage = 'Could not load prompts from Google Sheets. Please check server logs for details.';
     let errorTitle = 'Error Loading Prompts';
 
@@ -105,24 +109,37 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
     if (err.code) {
        detailedErrorMessage += ` Error Code: ${err.code}`;
        // Provide more specific guidance for common errors
-       if (err.code === 'ERR_OSSL_UNSUPPORTED' || (err.message && err.message.includes('PEM_read_bio_PrivateKey'))) {
+       if (err.code === 'ERR_OSSL_UNSUPPORTED' || (err.message && (err.message.includes('PEM_read_bio_PrivateKey') || err.message.includes('DECODER routines::unsupported')))) {
           errorTitle = 'Authentication Error';
-          detailedErrorMessage += `\n\nThis often indicates an issue with the format of the NEXT_PUBLIC_GOOGLE_PRIVATE_KEY in your .env file. Ensure it's enclosed in double quotes and includes the literal '\\n' characters for newlines, exactly as copied from the Google Cloud JSON key file. Example format:\nNEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n-----END PRIVATE KEY-----\\n"`;
+          // Updated detailed message for the frontend
+          detailedErrorMessage = `Could not authenticate with Google. This often indicates an issue with the format of the NEXT_PUBLIC_GOOGLE_PRIVATE_KEY in your .env file.\n\nEnsure it's enclosed in double quotes ("...") and includes the literal '\\n' characters for newlines, exactly as copied from the Google Cloud JSON key file.\n\nExample format in .env:\nNEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n-----END PRIVATE KEY-----\\n"\n\nPlease verify the format, save the .env file, and restart your development server.`;
+          // Log a more detailed message server-side
+          console.error('Authentication failed. Potential issue with NEXT_PUBLIC_GOOGLE_PRIVATE_KEY format in .env. Ensure it is enclosed in double quotes and uses literal "\\n" for newlines.');
        } else if (err.code === 403 || (err.message && err.message.includes('PERMISSION_DENIED'))) {
            errorTitle = 'Permission Denied';
-           detailedErrorMessage += `\n\nPlease ensure the service account email ('${clientEmail}') has been granted 'Viewer' (or 'Editor') access to the Google Sheet with ID '${spreadsheetId}'.`;
+           detailedErrorMessage = `The service account ('${clientEmail}') does not have permission to access the Google Sheet.\n\nPlease ensure the service account email has been granted 'Viewer' (or 'Editor') access to the Google Sheet with ID '${spreadsheetId}'. Check sharing settings in Google Sheets.`;
+           console.error(`Permission denied for service account '${clientEmail}' on spreadsheet '${spreadsheetId}'. Check sharing permissions.`);
        } else if (err.code === 404 || (err.message && err.message.includes('Requested entity was not found'))) {
            errorTitle = 'Spreadsheet Not Found';
-           detailedErrorMessage += `\n\nPlease verify that the NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') is correct and that the spreadsheet exists.`;
+           detailedErrorMessage = `The specified Google Sheet could not be found.\n\nPlease verify that the NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') in your .env file is correct and that the spreadsheet exists.`;
+           console.error(`Spreadsheet not found with ID '${spreadsheetId}'. Verify NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID in .env.`);
+       } else {
+         // Log the raw error details for less common errors
+         console.error('Unhandled Google Sheets API Error Details:', err);
        }
     }
-    if (err.errors) {
-        console.error('Google API Errors:', err.errors);
+    // Include additional error details if available (e.g., from googleapis library)
+    if (err.errors && Array.isArray(err.errors)) {
+        err.errors.forEach((e: any, i: number) => {
+            console.error(`Google API Error ${i+1}:`, e);
+            detailedErrorMessage += `\nAPI Error Detail ${i+1}: ${e.message || JSON.stringify(e)}`;
+        });
     }
 
-    // Provide fallback or error indication
+
+    // Provide fallback or error indication to the frontend
     return [
-       { id: 'fetch-error-1', title: errorTitle, text: detailedErrorMessage, category: 'Error' },
+       { id: `fetch-error-${err.code || 'unknown'}`, title: errorTitle, text: detailedErrorMessage, category: 'Error' },
     ];
     // Option 2: Rethrow the error to be caught by the caller in production
     // throw new Error(`Failed to fetch prompts from Google Sheets: ${err.message || 'Unknown error'}`);

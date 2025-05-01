@@ -52,7 +52,7 @@ export function PromptCard({ prompt }: PromptCardProps) {
           onClick={handleCopy}
           className={cn(
               "w-full bg-accent text-accent-foreground hover:bg-accent/90 transition-colors duration-200",
-              "border-accent hover:border-accent/90"
+              "border-accent hover:border-accent/90" // Keep border matching the accent color
           )}
           aria-label={`Copy prompt: ${prompt.title}`}
         >

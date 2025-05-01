@@ -3,44 +3,44 @@
 @tailwind utilities;
 
 body {
-  font-family: Arial, Helvetica, sans-serif;
+  /* Removed specific font-family here, will rely on layout.tsx or browser defaults */
 }
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* White */
+    --background: 0 0% 98%; /* Off-White */
     --foreground: 208 100% 15%; /* Dark Blue Text */
-    --card: 208 100% 98%; /* Very Light Blue-Gray */
+    --card: 0 0% 100%; /* White */
     --card-foreground: 208 100% 15%; /* Dark Blue Text */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 208 100% 15%; /* Dark Blue Text */
     --primary: 208 100% 15%; /* Dark Blue (#003049) */
     --primary-foreground: 0 0% 98%; /* White Text */
-    --secondary: 0 0% 84%; /* Light Gray (#D6D6D6) */
+    --secondary: 0 0% 94%; /* Lighter Gray */
     --secondary-foreground: 208 100% 15%; /* Dark Blue Text */
     --muted: 0 0% 96.1%; /* Near White */
     --muted-foreground: 0 0% 45.1%; /* Gray */
-    --accent: 174 72% 56%; /* Teal (#40E0D0) */
-    --accent-foreground: 208 100% 15%; /* Dark Blue Text */
+    --accent: 0 75% 55%; /* Red */
+    --accent-foreground: 0 0% 98%; /* White Text */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%; /* Light Gray Border */
     --input: 0 0% 89.8%; /* Light Gray Input */
-    --ring: 174 72% 56%; /* Teal Ring */
+    --ring: 0 75% 55%; /* Red Ring */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 208 100% 98%; /* Very Light Blue-Gray */
+    --sidebar-background: 0 0% 98%; /* Off-White */
     --sidebar-foreground: 208 100% 15%; /* Dark Blue Text */
     --sidebar-primary: 208 100% 15%; /* Dark Blue */
     --sidebar-primary-foreground: 0 0% 98%; /* White Text */
-    --sidebar-accent: 174 72% 56%; /* Teal */
-    --sidebar-accent-foreground: 208 100% 15%; /* Dark Blue Text */
+    --sidebar-accent: 0 75% 55%; /* Red */
+    --sidebar-accent-foreground: 0 0% 98%; /* White Text */
     --sidebar-border: 0 0% 89.8%; /* Light Gray Border */
-    --sidebar-ring: 174 72% 56%; /* Teal Ring */
+    --sidebar-ring: 0 75% 55%; /* Red Ring */
   }
   .dark {
     /* Define dark mode colors if needed, otherwise defaults can be adjusted */
@@ -56,13 +56,13 @@ body {
     --secondary-foreground: 0 0% 98%; /* White Text */
     --muted: 0 0% 14.9%; /* Dark Gray */
     --muted-foreground: 0 0% 63.9%; /* Lighter Gray */
-    --accent: 174 72% 56%; /* Teal */
-    --accent-foreground: 208 100% 15%; /* Dark Blue Text */
+    --accent: 0 75% 55%; /* Red */
+    --accent-foreground: 0 0% 98%; /* White Text */
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 14.9%; /* Dark Gray Border */
     --input: 0 0% 14.9%; /* Dark Gray Input */
-    --ring: 174 72% 56%; /* Teal Ring */
+    --ring: 0 75% 55%; /* Red Ring */
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -72,10 +72,10 @@ body {
     --sidebar-foreground: 0 0% 98%; /* White Text */
     --sidebar-primary: 0 0% 98%; /* White */
     --sidebar-primary-foreground: 208 100% 15%; /* Dark Blue Text */
-    --sidebar-accent: 174 72% 56%; /* Teal */
-    --sidebar-accent-foreground: 208 100% 15%; /* Dark Blue Text */
+    --sidebar-accent: 0 75% 55%; /* Red */
+    --sidebar-accent-foreground: 0 0% 98%; /* White Text */
     --sidebar-border: 0 0% 14.9%; /* Dark Gray Border */
-    --sidebar-ring: 174 72% 56%; /* Teal Ring */
+    --sidebar-ring: 0 75% 55%; /* Red Ring */
   }
 }
 
@@ -84,6 +84,7 @@ body {
     @apply border-border;
   }
   body {
-    @apply bg-secondary text-foreground; /* Use secondary light gray for background */
+    @apply bg-background text-foreground; /* Use background (off-white) */
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* Apply system font stack */
   }
 }

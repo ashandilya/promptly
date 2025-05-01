@@ -1,17 +1,9 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+// Removed Geist font imports
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
+// Removed Geist font instantiation
 
 export const metadata: Metadata = {
   title: 'Promptly Marketing', // Updated title
@@ -25,9 +17,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      {/* Removed Geist font variables from body className */}
+      <body className={`antialiased`}>
         {children}
         <Toaster /> {/* Add Toaster component */}
       </body>

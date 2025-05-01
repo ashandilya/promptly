@@ -17,6 +17,16 @@ export function PromptCard({ prompt }: PromptCardProps) {
   const { toast } = useToast(); // Initialize toast
 
   const handleCopy = () => {
+    // navigator.clipboard.writeText requires a secure context (HTTPS or localhost)
+    if (!navigator.clipboard) {
+      toast({
+        title: 'Error',
+        description: 'Clipboard API not available in this browser or context.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     navigator.clipboard.writeText(prompt.text)
       .then(() => {
         toast({
@@ -27,8 +37,8 @@ export function PromptCard({ prompt }: PromptCardProps) {
       .catch(err => {
          console.error('Failed to copy text: ', err);
          toast({
-            title: "Error",
-            description: "Failed to copy prompt.",
+            title: "Error Copying",
+            description: "Could not copy prompt to clipboard. Ensure you are on HTTPS or localhost.",
             variant: "destructive",
           });
       });
@@ -43,9 +53,10 @@ export function PromptCard({ prompt }: PromptCardProps) {
         )}
       </CardHeader>
       <CardContent className="flex-grow pt-0 pb-4">
-        <p className="text-sm text-foreground/90">{prompt.text}</p>
+        {/* Use pre-wrap to preserve line breaks within the prompt text */}
+        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{prompt.text}</p>
       </CardContent>
-      <CardFooter className="pt-0 pb-4 px-4">
+      <CardFooter className="pt-0 pb-4 px-4 mt-auto"> {/* Added mt-auto to push footer down */}
         <Button
           variant="outline"
           size="sm"

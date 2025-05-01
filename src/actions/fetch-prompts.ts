@@ -9,74 +9,105 @@ import type { Prompt } from '@/types/prompt';
 
 // Function to fetch prompts from Google Sheet - Runs on the server
 export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
+  console.log('Attempting to fetch prompts from Google Sheet...');
+
+  // Note: Using NEXT_PUBLIC_ for server-side code is not ideal for security.
+  // Consider removing NEXT_PUBLIC_ prefix if these are only used server-side.
+  const privateKey = process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY;
+  const clientEmail = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL;
+  const spreadsheetId = process.env.NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID;
+  const sheetName = process.env.NEXT_PUBLIC_GOOGLE_SHEET_NAME || 'Sheet1'; // Default to Sheet1 if not set
+  const range = `${sheetName}!A:D`; // Assuming columns A-D: id, title, text, category
+
+  if (!privateKey || !clientEmail || !spreadsheetId) {
+    const missingVars = [
+      !privateKey ? 'NEXT_PUBLIC_GOOGLE_PRIVATE_KEY' : null,
+      !clientEmail ? 'NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL' : null,
+      !spreadsheetId ? 'NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID' : null,
+    ].filter(Boolean).join(', ');
+    console.error(`Missing Google API credentials or Spreadsheet ID in environment variables: ${missingVars}`);
+     return [
+       { id: 'config-error-1', title: 'Configuration Error', text: `Missing required environment variables: ${missingVars}. Please check your .env file and server configuration.`, category: 'Setup Error' },
+     ];
+     // Consider throwing an error instead in a real production scenario
+     // throw new Error(`Missing Google API credentials or Spreadsheet ID: ${missingVars}`);
+  }
+
+  // Ensure the private key includes literal newlines if copied directly from the JSON file.
+  // The .env file should look like: NEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+  // The google-auth-library handles the literal newlines correctly. Removed the replace call.
+   const processedPrivateKey = privateKey;
+
   try {
-    // Ensure environment variables are set
-    // Note: Using NEXT_PUBLIC_ for server-side code is not ideal, but matches current setup.
-    // Consider removing NEXT_PUBLIC_ prefix if these are only used server-side.
-    const privateKey = process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n');
-    const clientEmail = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL;
-    const spreadsheetId = process.env.NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID;
-    const sheetName = process.env.NEXT_PUBLIC_GOOGLE_SHEET_NAME || 'Sheet1'; // Default to Sheet1 if not set
-    const range = `${sheetName}!A:D`; // Assuming columns A-D: id, title, text, category
-
-    if (!privateKey || !clientEmail || !spreadsheetId) {
-      console.error('Google API credentials or Spreadsheet ID not found in environment variables.');
-      // Return sample data or throw an error in production?
-      // For now, returning sample error prompt.
-       return [
-         { id: 'sample-1', title: 'Sample: Configure Env Vars', text: 'Please configure GOOGLE_PRIVATE_KEY, GOOGLE_CLIENT_EMAIL, and GOOGLE_SPREADSHEET_ID in your environment variables.', category: 'Setup' },
-       ];
-       // Consider throwing an error instead:
-       // throw new Error('Google API credentials or Spreadsheet ID not configured.');
-    }
-
-
+    console.log('Authenticating with Google...');
     const auth = new google.auth.GoogleAuth({
        credentials: {
          client_email: clientEmail,
-         private_key: privateKey,
+         private_key: processedPrivateKey, // Use the key directly
        },
        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
      });
-
+    console.log('Authentication object created.');
 
     const sheets = google.sheets({ version: 'v4', auth });
+    console.log(`Fetching data from Spreadsheet ID: ${spreadsheetId}, Sheet: ${sheetName}, Range: ${range}`);
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range,
     });
+    console.log('Successfully received response from Google Sheets API.');
 
     const rows = response.data.values;
-    if (!rows || rows.length === 0) {
-      console.log('No data found in the Google Sheet.');
+    if (!rows || rows.length <= 1) { // Check if rows exist and have more than just headers (optional)
+      console.warn(`No data found in the Google Sheet "${sheetName}" or only headers present.`);
       return [];
     }
+     console.log(`Found ${rows.length - 1} data rows (excluding header).`);
 
-    // Assuming the first row might be headers, skip it
+    // Assuming the first row is headers, skip it (slice(1))
     const prompts = rows.slice(1).map((row, index): Prompt | null => {
-       // Basic validation: Ensure essential columns exist
+       const rowIndex = index + 2; // Account for header row and 0-based index
+       // Basic validation: Ensure essential columns exist and are not empty
        if (row === null || row === undefined || row.length < 3 || !row[0] || !row[1] || !row[2]) {
-           console.warn(`Skipping row ${index + 2}: Missing required data (ID, Title, or Text). Row data:`, row);
+           console.warn(`Skipping row ${rowIndex}: Missing required data (ID, Title, or Text). Row data:`, row);
            return null; // Skip invalid rows
        }
-       return {
-         id: String(row[0]), // Ensure ID is a string
-         title: String(row[1]),
-         text: String(row[2]),
-         category: row[3] ? String(row[3]) : undefined, // Category is optional
-       };
-     }).filter((prompt): prompt is Prompt => prompt !== null); // Filter out null values
+       try {
+        return {
+          id: String(row[0]).trim(), // Ensure ID is a string and trim whitespace
+          title: String(row[1]).trim(),
+          text: String(row[2]).trim(),
+          category: row[3] ? String(row[3]).trim() : undefined, // Category is optional
+        };
+       } catch (parseError) {
+           console.warn(`Skipping row ${rowIndex}: Error parsing row data. Error: ${parseError}`, row);
+           return null;
+       }
+     }).filter((prompt): prompt is Prompt => prompt !== null); // Filter out null values (skipped rows)
 
+     console.log(`Successfully parsed ${prompts.length} prompts.`);
     return prompts;
-  } catch (err) {
-    console.error('Error fetching data from Google Sheets:', err);
+
+  } catch (err: any) {
+    console.error('Error fetching data from Google Sheets API:', err);
+    // Log specific details if available
+    let detailedErrorMessage = 'Could not load prompts from Google Sheets. Please check server logs for details.';
+    if (err.message) {
+      detailedErrorMessage += ` Error Message: ${err.message}`;
+    }
+    if (err.code) {
+       detailedErrorMessage += ` Error Code: ${err.code}`;
+    }
+    if (err.errors) {
+        console.error('Google API Errors:', err.errors);
+    }
+
     // Provide fallback or error indication
-    // Option 1: Return error prompt
     return [
-       { id: 'error-1', title: 'Error Loading Prompts', text: 'Could not load prompts from Google Sheets. Please check server logs for details.', category: 'Error' },
+       { id: 'fetch-error-1', title: 'Error Loading Prompts', text: detailedErrorMessage, category: 'Error' },
     ];
-    // Option 2: Rethrow the error to be caught by the caller
-    // throw new Error('Failed to fetch prompts from Google Sheets.');
+    // Option 2: Rethrow the error to be caught by the caller in production
+    // throw new Error(`Failed to fetch prompts from Google Sheets: ${err.message || 'Unknown error'}`);
   }
 }

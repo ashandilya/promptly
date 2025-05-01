@@ -14,28 +14,30 @@ export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [errorTitle, setErrorTitle] = useState<string>('Error Loading Prompts'); // Add state for error title
 
   // Fetch data using the Server Action on component mount
   useEffect(() => {
     async function loadPrompts() {
       setIsLoading(true);
       setError(null); // Reset error state
+      setErrorTitle('Error Loading Prompts'); // Reset error title
       try {
         // Call the server action - this executes on the server
         const promptsFromSheet = await fetchPromptsFromSheet();
-        // Check if the returned data indicates an error configured in the action
-        if (promptsFromSheet.length > 0 && promptsFromSheet[0].id === 'error-1') {
+
+        // Check if the returned data indicates a specific error configured in the action
+        if (promptsFromSheet.length > 0 && promptsFromSheet[0].id.startsWith('error-') || promptsFromSheet[0].id.startsWith('config-error-')) {
+          setErrorTitle(promptsFromSheet[0].title || 'Error');
           setError(promptsFromSheet[0].text);
           setPrompts([]); // Set empty prompts on error
-        } else if (promptsFromSheet.length > 0 && promptsFromSheet[0].id === 'sample-1') {
-           setError(promptsFromSheet[0].text); // Show setup message as error
-           setPrompts([]);
         } else {
           setPrompts(promptsFromSheet);
         }
       } catch (err: any) {
          console.error("Failed to load prompts via server action:", err);
          // Display a generic error message if the action throws an unexpected error
+         setErrorTitle("Unexpected Error");
          setError(err.message || "Failed to load prompts. Please try again later.");
          setPrompts([]);
       } finally {
@@ -89,8 +91,14 @@ export default function Home() {
        {/* Display error message if fetch failed */}
        {error && !isLoading && (
          <div className="text-center py-10 text-destructive bg-destructive/10 border border-destructive rounded-md p-4 mb-6">
-           <p className="font-semibold">Error Loading Prompts</p>
+           <p className="font-semibold">{errorTitle}</p>
            <p>{error}</p>
+           {errorTitle === 'Configuration Error' && (
+              <p className="text-sm mt-2">Make sure your <code className="bg-destructive/20 px-1 rounded">.env</code> file is correctly set up in the project root directory.</p>
+           )}
+           {errorTitle === 'Error Loading Prompts' && (
+             <p className="text-sm mt-2">Please verify your Google Sheet ID, Sheet Name, and ensure the service account email has access to the sheet.</p>
+           )}
          </div>
        )}
 
@@ -118,8 +126,8 @@ export default function Home() {
                <PromptCard key={prompt.id} prompt={prompt} />
              ))
            ) : (
-             // Only show "No prompts found" if there wasn't an error and the initial list isn't empty
-             !error && prompts.length > 0 && (
+             // Only show "No prompts found matching search" if there wasn't an error and the initial list isn't empty (meaning search yielded no results)
+             !error && prompts.length > 0 && searchTerm && (
                 <p className="text-center col-span-full text-muted-foreground py-10">
                   No prompts found matching your search criteria.
                 </p>
@@ -128,7 +136,7 @@ export default function Home() {
            {/* Message shown if initial fetch yielded no prompts (and no error) */}
            {!isLoading && !error && prompts.length === 0 && (
              <p className="text-center col-span-full text-muted-foreground py-10">
-                No prompts are currently available in the library.
+                No prompts are currently available in the library, or the Google Sheet is empty/inaccessible.
              </p>
            )}
          </div>
@@ -136,5 +144,3 @@ export default function Home() {
     </main>
   );
 }
-
-// Dummy Card removed as it's imported from ui/card now

@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-// Removed fetchPromptsFromSheet import
 import { PromptCard } from '@/components/prompt-card';
 import type { Prompt } from '@/types/prompt';
 import { Input } from '@/components/ui/input';
@@ -12,13 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Skeleton } from '@/components/ui/skeleton';
+// Skeleton import removed as it's not used in the loading state
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
-import Masonry from 'react-masonry-css'; // Import Masonry
-import { SparklingStarfield } from '@/components/sparkling-starfield'; // Import Starfield
+import Masonry from 'react-masonry-css'; // Ensure this import is correct
+import { SparklingStarfield } from '@/components/sparkling-starfield';
 
-// Reintroduce sample prompts for local testing/fallback
+
+// Sample prompts for local testing/fallback
 const samplePrompts: Prompt[] = [
   { id: '1', title: 'Generate Blog Post Ideas', text: 'Brainstorm 10 blog post titles about [topic] targeting [audience].', category: 'Content Creation' },
   { id: '2', title: 'Write Email Subject Lines', text: 'Create 5 compelling email subject lines for a webinar about [webinar topic].', category: 'Email Marketing' },
@@ -36,78 +36,59 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [error, setError] = useState<string | null>(null); // State to hold the error message string
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Simulate loading and set prompts from local data
     setIsLoading(true);
     setError(null);
     console.log("Loading prompts from local data...");
 
-    // Simulate a short delay to show loading state
+    // Simulate loading delay
     const timer = setTimeout(() => {
       try {
-        // Use sample prompts instead of fetching
+        // Using sample prompts as fallback/initial state
         setPrompts(samplePrompts);
         console.log(`Loaded ${samplePrompts.length} sample prompts.`);
       } catch (err: any) {
         console.error('Error setting sample prompts:', err);
         setError(`Failed to load sample prompts: ${err.message}`);
-        setPrompts([]);
+        setPrompts([]); // Clear prompts on error
       } finally {
-        setIsLoading(false); // Turn off loading state
+        setIsLoading(false);
       }
-    }, 500); // Adjust delay as needed (e.g., 500ms)
+    }, 500); // 0.5 second delay
 
-    // Cleanup timer on unmount
+    // Cleanup function to clear the timer if the component unmounts
     return () => clearTimeout(timer);
+  }, []); // Empty dependency array means this runs once on mount
 
-  }, []); // Empty dependency array ensures this runs once on mount
-
-  // Memoized list of unique categories derived from valid prompts
   const categories = useMemo(() => {
+    // Create a set of unique categories from the prompts
     const uniqueCategories = new Set<string>();
     prompts.forEach(prompt => {
-      if (prompt.category) {
+      if (prompt.category) { // Check if category exists
         uniqueCategories.add(prompt.category);
       }
     });
+    // Return an array with 'all' followed by the unique categories
     return ['all', ...Array.from(uniqueCategories)];
-  }, [prompts]);
+  }, [prompts]); // Recalculate when prompts change
 
-  // Memoized list of prompts filtered by search term and category
   const filteredPrompts = useMemo(() => {
+    // Filter prompts based on search term and selected category
     return prompts.filter(prompt => {
-      // Case-insensitive search matching title or text
       const matchesSearch = prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             prompt.text.toLowerCase().includes(searchTerm.toLowerCase());
-      // Category matching (allow 'all' or specific category)
       const matchesCategory = selectedCategory === 'all' || prompt.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [prompts, searchTerm, selectedCategory]);
+  }, [prompts, searchTerm, selectedCategory]); // Recalculate when these change
 
-  // Breakpoint configuration for the Masonry layout
+  // Define breakpoints for the Masonry layout
   const breakpointColumnsObj = {
-    default: 3, // Default: 3 columns
-    1100: 2,   // >= 1100px: 2 columns
-    700: 1     // >= 700px: 1 column
-  };
-
-  // Function to render skeleton loaders for the initial loading state
-  const renderSkeletons = (count: number) => {
-    return Array.from({ length: count }).map((_, index) => (
-       <div key={`skeleton-${index}`} className="flex flex-col space-y-3 p-4 border rounded-lg bg-card shadow mb-4"> {/* Added mb-4 for spacing */}
-         <Skeleton className="h-6 w-3/4 rounded" /> {/* Title skeleton */}
-         <Skeleton className="h-4 w-1/4 rounded" /> {/* Category badge skeleton */}
-         <div className="space-y-2 mt-2 flex-grow">
-           <Skeleton className="h-4 w-full rounded" />
-           <Skeleton className="h-4 w-5/6 rounded" />
-           <Skeleton className="h-4 w-1/2 rounded" />
-         </div>
-         <Skeleton className="h-9 w-full rounded mt-4" /> {/* Button skeleton */}
-       </div>
-     ));
+    default: 3, // 3 columns by default
+    1100: 2,   // 2 columns on screens <= 1100px
+    700: 1     // 1 column on screens <= 700px
   };
 
 
@@ -116,24 +97,23 @@ export default function Home() {
        {/* Sparkling Starfield background */}
       <SparklingStarfield className="absolute inset-0 -z-10" />
 
-      <div className="relative z-10"> {/* Content wrapper to ensure it's above the starfield */}
+      <div className="relative z-10"> {/* Content wrapper */}
           <header className="mb-8 text-center">
-            <h1 className="text-4xl font-bold text-primary mb-2">Promptly</h1> {/* Use primary color (red) */}
+            <h1 className="text-4xl font-bold text-primary mb-2">Promptly</h1>
             <p className="text-lg text-muted-foreground">
               Your Library for B2B Marketing Prompts
             </p>
           </header>
 
-          {/* Display error alert if an error occurred */}
+          {/* Display error message if there's an error */}
           {error && (
-              <Alert variant="destructive" className="mb-6 bg-card border-destructive text-destructive-foreground"> {/* Ensure alert stands out */}
-                <Terminal className="h-4 w-4 text-destructive-foreground" /> {/* Icon color */}
-                <AlertTitle>{error.split(':')[0] || 'Error Loading Prompts'}</AlertTitle>
+              <Alert variant="destructive" className="mb-6 bg-card border-destructive text-destructive-foreground">
+                <Terminal className="h-4 w-4 text-destructive-foreground" />
+                <AlertTitle>Error Loading Prompts</AlertTitle>
                 <AlertDescription>
-                  {/* Use pre-wrap for better formatting of error messages */}
-                  <pre className="whitespace-pre-wrap break-words text-sm font-mono">{error}</pre>
+                  <p>{error}</p>
                   <p className="mt-2 text-sm">
-                    Please check the console for more details.
+                     Please check the console for more details or try refreshing the page. Using fallback data for now.
                   </p>
                 </AlertDescription>
               </Alert>
@@ -148,64 +128,59 @@ export default function Home() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-grow bg-card border-border focus:ring-ring"
               aria-label="Search prompts"
-              disabled={isLoading || !!error} // Disable if loading or error occurred
+              disabled={isLoading && !error} // Disable while loading only if no error
             />
             <Select
               value={selectedCategory}
               onValueChange={setSelectedCategory}
               aria-label="Filter by category"
-              disabled={isLoading || !!error || categories.length <= 1} // Disable if loading, error, or no categories
+              disabled={(isLoading && !error) || categories.length <= 1} // Disable if loading, no error, or only 'all' category
             >
               <SelectTrigger className="w-full sm:w-[180px] bg-card border-border focus:ring-ring">
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                {/* Populate categories dynamically, handle empty state */}
                 {categories.length > 1 ? categories.map((category) => (
                   <SelectItem key={category} value={category} className="capitalize cursor-pointer focus:bg-accent focus:text-accent-foreground">
                     {category === 'all' ? 'All Categories' : category}
                   </SelectItem>
                 )) : (
-                  <SelectItem value="all" disabled>
-                    {isLoading ? "Loading..." : "No categories"}
-                  </SelectItem>
+                   <SelectItem value="all" disabled>
+                    {isLoading ? "Loading categories..." : "No categories"}
+                   </SelectItem>
                 )}
               </SelectContent>
             </Select>
           </div>
 
-          {/* Conditional rendering based on loading state and errors */}
+          {/* Conditional rendering based on loading state and data availability */}
           {isLoading ? (
-            // Show skeletons while loading
-            <Masonry
-              breakpointCols={breakpointColumnsObj}
-              className="flex w-auto -ml-4"
-              columnClassName="pl-4 bg-clip-padding"
-            >
-              {renderSkeletons(6)}
-            </Masonry>
+            // Show a simple loading message
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-lg font-medium">Loading prompts...</p>
+            </div>
           ) : !error && filteredPrompts.length === 0 ? (
              // Show message if no prompts match filters (and no error)
-            <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow"> {/* Add subtle background/shadow */}
+            <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow">
               <p className="text-lg font-medium">
                 {prompts.length === 0
-                  ? "No prompts available." // Updated message for local data
+                  ? "No prompts available." // If initial load resulted in zero prompts
                   : "No prompts match your search."}
               </p>
               {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}
             </div>
           ) : !error ? (
-            // Display prompts using Masonry layout if no error and prompts exist
+             // Display prompts using Masonry layout if not loading and no error
             <Masonry
               breakpointCols={breakpointColumnsObj}
-              className="flex w-auto -ml-4" // "my-masonry-grid"
-              columnClassName="pl-4 bg-clip-padding" // "my-masonry-grid_column"
+              className="flex w-auto -ml-4" // Negative margin to counteract padding
+              columnClassName="pl-4 bg-clip-padding" // Padding for spacing between columns
             >
               {filteredPrompts.map((prompt) => (
-                <PromptCard key={prompt.id} prompt={prompt} className="mb-4" /> {/* Add margin between cards */}
+                <PromptCard key={prompt.id} prompt={prompt} className="mb-4" /> // Margin bottom for spacing between cards vertically
               ))}
             </Masonry>
-          ) : null /* Don't render prompts if there was an error */}
+          ) : null /* Don't render anything if there's an error (handled by the Alert) */ }
       </div>
     </main>
   );

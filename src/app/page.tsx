@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { PromptCard } from '@/components/prompt-card';
-import type { Prompt } from '@/types/prompt';
+// Remove the direct import of Prompt type from @/types/prompt
+// import type { Prompt } from '@/types/prompt';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -13,21 +14,19 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
+import Masonry from 'react-masonry-css'; // Ensure this import is correct
 import { SparklingStarfield } from '@/components/sparkling-starfield';
-import Link from 'next/link'; // Import Link for Next.js routing
+import Link from 'next/link';
+import { fetchPromptsFromSheet } from '@/lib/sheets'; // Import fetch function
+import type { Prompt } from '@/types/prompt'; // Import Prompt type
 
 
-// Sample prompts for local testing/fallback
-const samplePrompts: Prompt[] = [
-  { id: '1', title: 'Generate Blog Post Ideas', text: 'Brainstorm 10 blog post titles about [topic] targeting [audience].', category: 'Content Creation' },
-  { id: '2', title: 'Write Email Subject Lines', text: 'Create 5 compelling email subject lines for a webinar about [webinar topic].', category: 'Email Marketing' },
-  { id: '3', title: 'Social Media Ad Copy', text: 'Write 3 variations of ad copy for a Facebook campaign promoting [product/service] to [target demographic]. Focus on [key benefit].', category: 'Social Media' },
-  { id: '4', title: 'SEO Keyword Research', text: 'List 15 long-tail keywords related to [core keyword] for a B2B SaaS company.', category: 'SEO' },
-  { id: '5', title: 'Develop Buyer Persona', text: 'Outline a buyer persona for a [job title] at a [company size] company in the [industry] industry. Include pain points and goals.', category: 'Strategy' },
-  { id: '6', title: 'Competitor Analysis', text: 'Identify 3 key competitors for [your company/product] and summarize their main marketing strategies.', category: 'Strategy' },
-  { id: '7', title: 'Value Proposition Statement', text: 'Draft a value proposition statement for [product/service] that highlights its unique benefit for [target customer].', category: 'Messaging' },
-  { id: '8', title: 'Website Call-to-Action', text: 'Suggest 3 clear and concise call-to-action (CTA) buttons for a landing page offering a [type of offer, e.g., free demo].', category: 'Website' },
-];
+// Masonry responsive breakpoints
+const breakpointColumnsObj = {
+  default: 3,
+  1100: 2,
+  700: 1
+};
 
 
 export default function Home() {
@@ -38,44 +37,62 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsLoading(true);
-    setError(null);
-    console.log("Initiating prompt loading...");
-
-    // Simulate loading delay and data fetching
-    const timer = setTimeout(() => {
+    const loadPrompts = async () => {
+      setIsLoading(true);
+      setError(null);
+      console.log("Initiating prompt loading...");
       try {
-        // Using sample prompts as the data source
-        console.log("Attempting to set sample prompts...");
-        setPrompts(samplePrompts);
-        console.log(`Successfully set ${samplePrompts.length} sample prompts.`);
-        setIsLoading(false); // Set loading to false only on success
-      } catch (err: any) {
-        console.error('Error setting sample prompts:', err);
-        setError(`Failed to load prompts: ${err.message || 'An unknown error occurred'}`);
-        setPrompts([]); // Clear prompts on error
-        setIsLoading(false); // Also set loading to false on error
-      }
-    }, 500); // 0.5 second simulated delay
+        const fetchedPrompts = await fetchPromptsFromSheet();
+        if (fetchedPrompts.length === 0 && !error) { // Check !error to avoid overwriting fetch error
+          console.warn("No prompts fetched from Google Sheets or sheet is empty.");
+          // Keep the UI consistent, show "No prompts available" message later if needed
+          // setError("No prompts found in the connected Google Sheet."); // Optional: specific message for empty sheet
+        }
+        console.log(`Successfully fetched ${fetchedPrompts.length} prompts from Google Sheets.`);
+        setPrompts(fetchedPrompts);
 
-    // Cleanup function to clear the timer if the component unmounts
-    return () => {
-      console.log("Cleaning up prompt loading timer.");
-      clearTimeout(timer);
-    }
+      } catch (err: any) {
+        console.error('Error fetching prompts from Google Sheets:', err);
+        const errorMessage = err.message || 'An unknown error occurred';
+        // Attempt to get more specific error details if available
+        const nestedErrorMessage = err.cause?.message || errorMessage;
+        setError(`Could not load prompts from Google Sheets: ${nestedErrorMessage}. Please check configuration and network.`);
+        setPrompts([]); // Clear prompts on error
+      } finally {
+        setIsLoading(false);
+        console.log("Prompt loading finished.");
+      }
+    };
+
+    loadPrompts();
   }, []); // Empty dependency array means this runs once on mount
 
-  const categories = useMemo(() => {
-    const uniqueCategories = new Set<string>(prompts.map(p => p.category).filter(Boolean) as string[]);
-    return ['all', ...Array.from(uniqueCategories).sort()];
+ const categories = useMemo(() => {
+    // Derive categories from the currently loaded prompts
+    const uniqueCategories = new Set<string>(
+      prompts.map(p => p.category).filter((c): c is string => !!c && c !== 'Uncategorized') // Filter out empty/null/default categories
+    );
+    const sortedCategories = ['all', ...Array.from(uniqueCategories).sort()];
+     // Only add 'Uncategorized' if there are actually uncategorized prompts
+    if (prompts.some(p => p.category === 'Uncategorized')) {
+        sortedCategories.push('Uncategorized');
+    }
+    return sortedCategories;
   }, [prompts]);
 
   const filteredPrompts = useMemo(() => {
     return prompts.filter(prompt => {
+      if (!prompt) return false; // Skip if prompt is somehow null/undefined
+
       const lowerSearchTerm = searchTerm.toLowerCase();
-      const matchesSearch = prompt.title.toLowerCase().includes(lowerSearchTerm) ||
-                            prompt.text.toLowerCase().includes(lowerSearchTerm);
+      const titleMatch = prompt.title?.toLowerCase().includes(lowerSearchTerm) ?? false;
+      const textMatch = prompt.text?.toLowerCase().includes(lowerSearchTerm) ?? false;
+      const categoryMatch = prompt.category?.toLowerCase().includes(lowerSearchTerm) ?? false; // Search in category too
+
+      const matchesSearch = titleMatch || textMatch || categoryMatch;
+
       const matchesCategory = selectedCategory === 'all' || prompt.category === selectedCategory;
+
       return matchesSearch && matchesCategory;
     });
   }, [prompts, searchTerm, selectedCategory]);
@@ -95,20 +112,20 @@ export default function Home() {
           </header>
 
           {/* Display error message if there's an error */}
-          {error && !isLoading && ( // Show error only if not loading
+          {error && ( // Show error always if it exists
               <Alert variant="destructive" className="mb-6 bg-card border-destructive text-destructive-foreground">
                 <Terminal className="h-4 w-4 text-destructive-foreground" />
                 <AlertTitle>Error Loading Prompts</AlertTitle>
                 <AlertDescription>
                   <p>{error}</p>
                   <p className="mt-2 text-sm">
-                     Please check the console for more details or try refreshing the page.
+                     Please check the console for more details or try refreshing the page. Verify Google Sheets configuration and permissions.
                   </p>
                 </AlertDescription>
               </Alert>
           )}
 
-          {/* Added link above search */}
+           {/* Added link above search */}
            <p className="text-center text-sm text-muted-foreground mb-4">
             Know the person behind this?{' '}
             <Link
@@ -125,12 +142,12 @@ export default function Home() {
           <div className="mb-6 flex flex-col sm:flex-row gap-4">
             <Input
               type="text"
-              placeholder="Search prompts..."
+              placeholder="Search prompts by title, text, or category..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-grow bg-card border-border focus:ring-ring"
               aria-label="Search prompts"
-              disabled={isLoading} // Disable only while loading
+              disabled={isLoading} // Disable only while loading initially
             />
             <Select
               value={selectedCategory}
@@ -142,17 +159,17 @@ export default function Home() {
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                {categories.map((category) => (
-                  <SelectItem key={category} value={category} className="capitalize cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                    {category === 'all' ? 'All Categories' : category}
-                  </SelectItem>
-                ))}
                  {/* Show loading/empty state inside SelectContent if needed */}
-                 {isLoading && categories.length <= 1 && (
+                 {isLoading && categories.length <= 1 ? (
                     <SelectItem value="loading" disabled>Loading categories...</SelectItem>
-                 )}
-                 {!isLoading && categories.length <= 1 && (
-                    <SelectItem value="no-categories" disabled>No categories available</SelectItem>
+                 ) : categories.length <= 1 ? (
+                     <SelectItem value="no-categories" disabled>No categories available</SelectItem>
+                 ): (
+                    categories.map((category) => (
+                      <SelectItem key={category} value={category} className="capitalize cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                        {category === 'all' ? 'All Categories' : category}
+                      </SelectItem>
+                    ))
                  )}
               </SelectContent>
             </Select>
@@ -162,30 +179,32 @@ export default function Home() {
           {isLoading ? (
             // Show a simple loading message
             <div className="text-center py-12 text-muted-foreground">
-              <p className="text-lg font-medium">Loading prompts...</p>
+              <p className="text-lg font-medium">Loading prompts from Google Sheets...</p>
               {/* Optional: Add a spinner here */}
             </div>
-          ) : error ? (
-             // Error state is handled by the Alert component above, so render nothing here
-             null
-          ) : filteredPrompts.length === 0 ? (
-             // Show message if no prompts match filters (and no error)
+          ) : !error && filteredPrompts.length === 0 ? ( // Check !error here
+             // Show message if no prompts match filters OR if initial load was successful but yielded 0 prompts
             <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow">
               <p className="text-lg font-medium">
                 {prompts.length === 0
-                  ? "No prompts available at the moment." // If initial load resulted in zero prompts (and no error)
-                  : "No prompts match your search."}
+                  ? "No prompts available. Check the Google Sheet or configuration." // If initial load resulted in zero prompts (and no error)
+                  : "No prompts match your search or filter."}
               </p>
               {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}
             </div>
-          ) : (
-             // Display prompts using CSS Grid layout
-             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          ) : !error && filteredPrompts.length > 0 ? ( // Only render Masonry if no error and prompts exist
+             // Display prompts using Masonry layout
+              <Masonry
+                breakpointCols={breakpointColumnsObj}
+                className="flex w-auto -ml-4" // Adjust negative margin to counteract padding on items
+                columnClassName="pl-4 bg-clip-padding" // Add padding to columns
+              >
                {filteredPrompts.map((prompt) => (
-                 <PromptCard key={prompt.id} prompt={prompt} />
+                 // Add margin-bottom to each card for vertical spacing within columns
+                 <PromptCard key={prompt.id} prompt={prompt} className="mb-4" />
                ))}
-             </div>
-          )}
+              </Masonry>
+          ) : null /* Error handled by the Alert, so render nothing here if error exists */ }
       </div>
     </main>
   );

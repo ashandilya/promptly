@@ -11,10 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-// Skeleton import removed as it's not used in the loading state
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
-// Removed Masonry import as the package is causing issues and will be replaced with CSS grid
 import { SparklingStarfield } from '@/components/sparkling-starfield';
 import Link from 'next/link'; // Import Link for Next.js routing
 
@@ -42,48 +40,45 @@ export default function Home() {
   useEffect(() => {
     setIsLoading(true);
     setError(null);
-    console.log("Loading prompts from local data...");
+    console.log("Initiating prompt loading...");
 
-    // Simulate loading delay
+    // Simulate loading delay and data fetching
     const timer = setTimeout(() => {
       try {
-        // Using sample prompts as fallback/initial state
+        // Using sample prompts as the data source
+        console.log("Attempting to set sample prompts...");
         setPrompts(samplePrompts);
-        console.log(`Loaded ${samplePrompts.length} sample prompts.`);
+        console.log(`Successfully set ${samplePrompts.length} sample prompts.`);
+        setIsLoading(false); // Set loading to false only on success
       } catch (err: any) {
         console.error('Error setting sample prompts:', err);
-        setError(`Failed to load sample prompts: ${err.message}`);
+        setError(`Failed to load prompts: ${err.message || 'An unknown error occurred'}`);
         setPrompts([]); // Clear prompts on error
-      } finally {
-        setIsLoading(false);
+        setIsLoading(false); // Also set loading to false on error
       }
-    }, 500); // 0.5 second delay
+    }, 500); // 0.5 second simulated delay
 
     // Cleanup function to clear the timer if the component unmounts
-    return () => clearTimeout(timer);
+    return () => {
+      console.log("Cleaning up prompt loading timer.");
+      clearTimeout(timer);
+    }
   }, []); // Empty dependency array means this runs once on mount
 
   const categories = useMemo(() => {
-    // Create a set of unique categories from the prompts
-    const uniqueCategories = new Set<string>();
-    prompts.forEach(prompt => {
-      if (prompt.category) { // Check if category exists
-        uniqueCategories.add(prompt.category);
-      }
-    });
-    // Return an array with 'all' followed by the unique categories
-    return ['all', ...Array.from(uniqueCategories)];
-  }, [prompts]); // Recalculate when prompts change
+    const uniqueCategories = new Set<string>(prompts.map(p => p.category).filter(Boolean) as string[]);
+    return ['all', ...Array.from(uniqueCategories).sort()];
+  }, [prompts]);
 
   const filteredPrompts = useMemo(() => {
-    // Filter prompts based on search term and selected category
     return prompts.filter(prompt => {
-      const matchesSearch = prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            prompt.text.toLowerCase().includes(searchTerm.toLowerCase());
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      const matchesSearch = prompt.title.toLowerCase().includes(lowerSearchTerm) ||
+                            prompt.text.toLowerCase().includes(lowerSearchTerm);
       const matchesCategory = selectedCategory === 'all' || prompt.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [prompts, searchTerm, selectedCategory]); // Recalculate when these change
+  }, [prompts, searchTerm, selectedCategory]);
 
 
   return (
@@ -100,14 +95,14 @@ export default function Home() {
           </header>
 
           {/* Display error message if there's an error */}
-          {error && (
+          {error && !isLoading && ( // Show error only if not loading
               <Alert variant="destructive" className="mb-6 bg-card border-destructive text-destructive-foreground">
                 <Terminal className="h-4 w-4 text-destructive-foreground" />
                 <AlertTitle>Error Loading Prompts</AlertTitle>
                 <AlertDescription>
                   <p>{error}</p>
                   <p className="mt-2 text-sm">
-                     Please check the console for more details or try refreshing the page. Using fallback data for now.
+                     Please check the console for more details or try refreshing the page.
                   </p>
                 </AlertDescription>
               </Alert>
@@ -135,27 +130,30 @@ export default function Home() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-grow bg-card border-border focus:ring-ring"
               aria-label="Search prompts"
-              disabled={isLoading && !error} // Disable while loading only if no error
+              disabled={isLoading} // Disable only while loading
             />
             <Select
               value={selectedCategory}
               onValueChange={setSelectedCategory}
               aria-label="Filter by category"
-              disabled={(isLoading && !error) || categories.length <= 1} // Disable if loading, no error, or only 'all' category
+              disabled={isLoading || categories.length <= 1} // Disable if loading or no categories
             >
               <SelectTrigger className="w-full sm:w-[180px] bg-card border-border focus:ring-ring">
                 <SelectValue placeholder="Filter by category" />
               </SelectTrigger>
               <SelectContent className="bg-popover border-border">
-                {categories.length > 1 ? categories.map((category) => (
+                {categories.map((category) => (
                   <SelectItem key={category} value={category} className="capitalize cursor-pointer focus:bg-accent focus:text-accent-foreground">
                     {category === 'all' ? 'All Categories' : category}
                   </SelectItem>
-                )) : (
-                   <SelectItem value="all" disabled>
-                    {isLoading ? "Loading categories..." : "No categories"}
-                   </SelectItem>
-                )}
+                ))}
+                 {/* Show loading/empty state inside SelectContent if needed */}
+                 {isLoading && categories.length <= 1 && (
+                    <SelectItem value="loading" disabled>Loading categories...</SelectItem>
+                 )}
+                 {!isLoading && categories.length <= 1 && (
+                    <SelectItem value="no-categories" disabled>No categories available</SelectItem>
+                 )}
               </SelectContent>
             </Select>
           </div>
@@ -165,25 +163,29 @@ export default function Home() {
             // Show a simple loading message
             <div className="text-center py-12 text-muted-foreground">
               <p className="text-lg font-medium">Loading prompts...</p>
+              {/* Optional: Add a spinner here */}
             </div>
-          ) : !error && filteredPrompts.length === 0 ? (
+          ) : error ? (
+             // Error state is handled by the Alert component above, so render nothing here
+             null
+          ) : filteredPrompts.length === 0 ? (
              // Show message if no prompts match filters (and no error)
             <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow">
               <p className="text-lg font-medium">
                 {prompts.length === 0
-                  ? "No prompts available." // If initial load resulted in zero prompts
+                  ? "No prompts available at the moment." // If initial load resulted in zero prompts (and no error)
                   : "No prompts match your search."}
               </p>
               {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}
             </div>
-          ) : !error ? (
-             // Display prompts using CSS Grid layout (replaces Masonry)
+          ) : (
+             // Display prompts using CSS Grid layout
              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                {filteredPrompts.map((prompt) => (
                  <PromptCard key={prompt.id} prompt={prompt} />
                ))}
              </div>
-          ) : null /* Don't render anything if there's an error (handled by the Alert) */ }
+          )}
       </div>
     </main>
   );

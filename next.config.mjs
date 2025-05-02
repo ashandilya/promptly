@@ -1,6 +1,7 @@
-import type {NextConfig} from 'next';
+// @ts-check
+/** @type {import('next').NextConfig} */
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   /* config options here */
   typescript: {
     // !! WARN !!
@@ -24,15 +25,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  // Environment variables are now accessed directly server-side (process.env.VAR_NAME)
-  // and should be configured in your hosting environment (e.g., Vercel, Netlify)
-  // and/or your local .env file. Remove the env block here.
-  // env: {
-  //  GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,
-  //  GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL,
-  //  GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID,
-  //  GOOGLE_SHEET_NAME: process.env.GOOGLE_SHEET_NAME,
-  // },
 };
 
 export default nextConfig;

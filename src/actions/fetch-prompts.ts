@@ -21,50 +21,51 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   const sheetName = process.env.GOOGLE_SHEET_NAME || 'Sheet1'; // Default to Sheet1 if not set
   const range = `${sheetName}!A:D`; // Assuming columns A-D: id, title, text, category
 
-  if (!privateKey || !clientEmail || !spreadsheetId) {
-    const missingVars = [
-      !privateKey ? 'GOOGLE_PRIVATE_KEY' : null,
-      !clientEmail ? 'GOOGLE_CLIENT_EMAIL' : null,
-      !spreadsheetId ? 'GOOGLE_SPREADSHEET_ID' : null,
-    ].filter(Boolean).join(', ');
-    console.error(`Configuration Error: Missing Google API credentials or Spreadsheet ID in server environment variables: ${missingVars}`);
+  // --- Configuration Check ---
+  const missingVars = [
+    !privateKey ? 'GOOGLE_PRIVATE_KEY' : null,
+    !clientEmail ? 'GOOGLE_CLIENT_EMAIL' : null,
+    !spreadsheetId ? 'GOOGLE_SPREADSHEET_ID' : null,
+  ].filter(Boolean);
+
+  if (missingVars.length > 0) {
+    const missingVarsString = missingVars.join(', ');
+    console.error(`Configuration Error: Missing server environment variables: ${missingVarsString}`);
+     const errorMessage = `Configuration Error: The application is missing required server-side configuration.\nPlease ensure the following environment variables are set in your hosting environment (e.g., Vercel, Netlify) and (for local development) in your .env file:\n\n- ${missingVars.join('\n- ')}\n\nThese variables should NOT start with NEXT_PUBLIC_. Contact support if you need assistance.`;
      return [
-       { id: 'config-error-1', title: 'Configuration Error', text: `Missing required server environment variables: ${missingVars}. \n\nPlease ensure GOOGLE_PRIVATE_KEY, GOOGLE_CLIENT_EMAIL, and GOOGLE_SPREADSHEET_ID are set in your hosting environment (e.g., Vercel, Netlify) and in your local .env file. These variables should NOT start with NEXT_PUBLIC_.`, category: 'Setup Error' },
+       { id: 'config-error-1', title: 'Configuration Error', text: errorMessage, category: 'Setup Error' },
      ];
-     // Consider throwing an error instead in a real production scenario
-     // throw new Error(`Missing Google API credentials or Spreadsheet ID: ${missingVars}`);
+     // In production, consider throwing an error for critical configuration issues
+     // throw new Error(`Missing server environment variables: ${missingVarsString}`);
   }
 
   // Log the client email to ensure it's being read correctly. Don't log the private key.
-  console.log(`Using Client Email: ${clientEmail}`);
+  console.log(`Using Google Service Account Email: ${clientEmail}`);
   // Avoid logging the key itself, just confirm its presence
-  console.log(`Private Key is present: ${!!privateKey}`);
-  // Log first and last few chars for basic format check if needed, but be cautious
-  // console.log(`Private Key starts with: ${privateKey.substring(0, 30)}... ends with: ...${privateKey.substring(privateKey.length - 30)}`);
+  console.log(`Google Private Key is present: ${!!privateKey}`);
+  console.log(`Using Google Spreadsheet ID: ${spreadsheetId}`);
+  console.log(`Using Google Sheet Name: ${sheetName}`);
 
-  // Ensure the private key includes literal newlines if copied directly from the JSON file.
-  // The .env file should look like: GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-  // The google-auth-library handles the literal newlines correctly.
-  // Replace escaped newlines \\n with literal newlines \n if they exist.
-  const processedPrivateKey = privateKey.replace(/\\n/g, '\n');
-
+  // --- Authentication and API Call ---
   try {
-    console.log('Authenticating with Google...');
+    console.log('Creating Google Auth object...');
     const auth = new google.auth.GoogleAuth({
        credentials: {
          client_email: clientEmail,
-         private_key: processedPrivateKey, // Use the processed key
+         // The google-auth-library generally handles newline characters correctly.
+         // Rely on the library's parsing unless specific issues arise.
+         // Removed: processedPrivateKey = privateKey.replace(/\\n/g, '\n');
+         private_key: privateKey,
        },
        scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
      });
-    console.log('Authentication object created. Attempting to get client...');
-    // Explicitly get the client to potentially trigger authentication errors earlier
-    const client = await auth.getClient();
-    console.log('Successfully authenticated and obtained Google Auth client.');
+    console.log('Authentication object created. Attempting to get authenticated client...');
 
+    const client = await auth.getClient();
+    console.log('Successfully obtained authenticated Google Auth client.');
 
     const sheets = google.sheets({ version: 'v4', auth: client });
-    console.log(`Fetching data from Spreadsheet ID: ${spreadsheetId}, Sheet: ${sheetName}, Range: ${range}`);
+    console.log(`Attempting to fetch data from Spreadsheet ID: ${spreadsheetId}, Sheet: ${sheetName}, Range: ${range}`);
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -72,19 +73,26 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
     });
     console.log('Successfully received response from Google Sheets API.');
 
+    // --- Data Processing ---
     const rows = response.data.values;
-    if (!rows || rows.length <= 1) { // Check if rows exist and have more than just headers (optional)
-      console.warn(`No data found in the Google Sheet "${sheetName}" or only headers present.`);
-      return [];
-    }
-     console.log(`Found ${rows.length - 1} data rows (excluding header).`);
+    if (!rows || rows.length === 0) {
+       console.warn(`No data found in the Google Sheet "${sheetName}". Ensure the sheet is not empty and the name is correct.`);
+       // Return an empty array instead of an error if the sheet is just empty
+       return [];
+     } else if (rows.length === 1) {
+       console.warn(`Only a header row found in the Google Sheet "${sheetName}". Add prompt data below the header.`);
+       // Return an empty array if only header exists
+       return [];
+     }
+
+     console.log(`Found ${rows.length} total rows (including header). Processing ${rows.length - 1} data rows.`);
 
     // Assuming the first row is headers, skip it (slice(1))
     const prompts = rows.slice(1).map((row, index): Prompt | null => {
-       const rowIndex = index + 2; // Account for header row and 0-based index
-       // Basic validation: Ensure essential columns exist and are not empty
-       if (row === null || row === undefined || row.length < 3 || !row[0] || !row[1] || !row[2]) {
-           console.warn(`Skipping row ${rowIndex}: Missing required data (ID, Title, or Text). Row data:`, row);
+       const rowIndex = index + 2; // Account for header row (1) and 0-based index (1)
+       // Basic validation: Ensure essential columns exist and have content
+       if (!row || row.length < 3 || !row[0]?.trim() || !row[1]?.trim() || !row[2]?.trim()) {
+           console.warn(`Skipping row ${rowIndex}: Missing required data (ID, Title, or Text) or empty values. Row data:`, row);
            return null; // Skip invalid rows
        }
        try {
@@ -92,69 +100,76 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
           id: String(row[0]).trim(), // Ensure ID is a string and trim whitespace
           title: String(row[1]).trim(),
           text: String(row[2]).trim(),
-          category: row[3] ? String(row[3]).trim() : undefined, // Category is optional
+          // Category is optional, ensure it's a string if present
+          category: row[3] ? String(row[3]).trim() : undefined,
         };
-       } catch (parseError) {
-           console.warn(`Skipping row ${rowIndex}: Error parsing row data. Error: ${parseError}`, row);
+       } catch (parseError: any) {
+           console.warn(`Skipping row ${rowIndex}: Error parsing row data. Error: ${parseError.message || parseError}`, row);
            return null;
        }
      }).filter((prompt): prompt is Prompt => prompt !== null); // Filter out null values (skipped rows)
 
-     console.log(`Successfully parsed ${prompts.length} prompts.`);
+     if (prompts.length === 0 && rows.length > 1) {
+       console.warn("No valid prompts were parsed from the sheet rows. Check row formatting.");
+     } else {
+       console.log(`Successfully parsed ${prompts.length} valid prompts.`);
+     }
     return prompts;
 
   } catch (err: any) {
-    // Log the full error object for detailed debugging
-    console.error('Error fetching data from Google Sheets API:', err);
+    // --- Error Handling ---
+    console.error('Error during Google Sheets API operation:', err);
 
-    let detailedErrorMessage = 'Could not load prompts from Google Sheets. Please check server logs for details.';
     let errorTitle = 'Error Loading Prompts';
+    let detailedErrorMessage = 'An unexpected error occurred while trying to load prompts from Google Sheets.';
 
-    if (err.message) {
-      detailedErrorMessage += ` Error Message: ${err.message}`;
-    }
+    // Improve error messages based on common issues
     if (err.code) {
-       detailedErrorMessage += ` Error Code: ${err.code}`;
-       // Provide more specific guidance for common errors
-       if (err.code === 'ERR_OSSL_UNSUPPORTED' || (err.message && (err.message.includes('PEM_read_bio_PrivateKey') || err.message.includes('DECODER routines::unsupported') || err.message.includes('error:0A00018E:SSL routines::ca md too weak') ))) {
-          errorTitle = 'Authentication Error';
-          // Updated detailed message for the frontend
-          detailedErrorMessage = `Could not authenticate with Google. This often indicates an issue with the format of the GOOGLE_PRIVATE_KEY in your server environment variables OR an incompatibility in the deployment environment.\n\n1. **Check Key Format:** Ensure the key in your hosting environment variables (and local .env) is enclosed in double quotes ("...") and includes literal '\\n' characters for newlines, exactly as copied from the Google Cloud JSON key file.\n\nExample format in .env or hosting variables:\nGOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n-----END PRIVATE KEY-----\\n"\n\n2. **Check Deployment Environment:** Some hosting platforms might have restrictions or older SSL libraries causing this. Check your hosting provider's documentation or support regarding Node.js version and OpenSSL compatibility.\n\nPlease verify the key format, save the .env file, and restart your development server. If deployed, ensure the environment variable is correctly set and formatted in your hosting provider's settings and redeploy.`;
-          // Log a more detailed message server-side
-          console.error('Authentication failed. Potential issue with GOOGLE_PRIVATE_KEY format in environment variables (ensure double quotes and literal \\n) OR deployment environment incompatibility (Node/OpenSSL).');
-       } else if (err.code === 403 || (err.message && err.message.includes('PERMISSION_DENIED'))) {
-           errorTitle = 'Permission Denied';
-           detailedErrorMessage = `The service account ('${clientEmail}') does not have permission to access the Google Sheet.\n\nPlease ensure the service account email has been granted 'Viewer' (or 'Editor') access to the Google Sheet with ID '${spreadsheetId}'. Check sharing settings in Google Sheets.`;
-           console.error(`Permission denied for service account '${clientEmail}' on spreadsheet '${spreadsheetId}'. Check sharing permissions.`);
-       } else if (err.code === 404 || (err.message && err.message.includes('Requested entity was not found'))) {
-           errorTitle = 'Spreadsheet Not Found';
-           detailedErrorMessage = `The specified Google Sheet could not be found.\n\nPlease verify that the GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') in your environment variables is correct and that the spreadsheet exists.`;
-           console.error(`Spreadsheet not found with ID '${spreadsheetId}'. Verify GOOGLE_SPREADSHEET_ID in environment variables.`);
-       } else {
-         // Log the raw error details for less common errors
-         console.error('Unhandled Google Sheets API Error Details:', err);
-       }
-    } else {
-       // Catch potential errors during auth.getClient()
-       console.error('Error obtaining Google Auth client:', err);
-       errorTitle = 'Authentication Setup Error';
-       detailedErrorMessage = `Failed to initialize Google Authentication. Check the server logs for details. This might be due to invalid credentials format or network issues during authentication setup. Ensure GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY are correctly formatted in the environment.`;
+      detailedErrorMessage += ` (Code: ${err.code})`;
+    }
+    if (err.message) {
+      detailedErrorMessage += ` Message: ${err.message}`;
     }
 
-    // Include additional error details if available (e.g., from googleapis library)
-    if (err.errors && Array.isArray(err.errors)) {
+    // Specific error handling
+    if (err.message && (err.message.includes('PEM_read_bio_PrivateKey') || err.message.includes('DECODER routines::unsupported') || err.code === 'ERR_OSSL_UNSUPPORTED' || (err.message && err.message.includes('error:0A00018E:SSL routines::ca md too weak')))) {
+        errorTitle = 'Authentication Error';
+        // Updated detailed message for the frontend
+        detailedErrorMessage = `Could not authenticate with Google. This often indicates an issue with the GOOGLE_PRIVATE_KEY format or compatibility in the hosting environment.\n\n1. **Verify Key:** Ensure the GOOGLE_PRIVATE_KEY environment variable provided in your hosting settings is the complete and correct key from the Google Cloud JSON file.\n2. **Check Hosting Environment:** Some platforms might require specific formatting or have limitations. Consult your hosting provider's documentation for handling multi-line environment variables or potential Node.js/OpenSSL compatibility issues.\n\nPlease verify the key in your hosting provider's settings and redeploy. For local development, check the .env file.`;
+        // Log a more detailed message server-side
+        console.error('Authentication failed. Potential issue with GOOGLE_PRIVATE_KEY format/completeness in server environment variables OR deployment environment incompatibility (Node/OpenSSL). Ensure the key is correctly set in the hosting environment.');
+    } else if (err.code === 403 || (err.message && (err.message.includes('PERMISSION_DENIED') || err.message.includes('caller does not have permission')))) {
+        errorTitle = 'Permission Denied';
+        detailedErrorMessage = `The application's service account ('${clientEmail}') lacks permission to access the Google Sheet.\n\nPlease verify that this service account email has been granted at least 'Viewer' access to the Google Sheet with ID '${spreadsheetId}'. Check the 'Share' settings in Google Sheets.`;
+        console.error(`Permission denied for service account '${clientEmail}' on spreadsheet '${spreadsheetId}'. Check sharing permissions in Google Sheets.`);
+    } else if (err.code === 404 || (err.message && err.message.includes('Requested entity was not found'))) {
+        errorTitle = 'Spreadsheet Not Found';
+        detailedErrorMessage = `The specified Google Sheet could not be found.\n\nPlease verify that the GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') environment variable set in your hosting environment is correct and that the spreadsheet exists and hasn't been deleted.`;
+        console.error(`Spreadsheet not found with ID '${spreadsheetId}'. Verify the GOOGLE_SPREADSHEET_ID server environment variable.`);
+    } else if (err.message && err.message.includes('invalid_grant')) {
+        errorTitle = 'Authentication Grant Error';
+        detailedErrorMessage = `Google rejected the authentication request. This could be due to an invalid or malformed private key (GOOGLE_PRIVATE_KEY) or client email (GOOGLE_CLIENT_EMAIL).\n\nDouble-check these server environment variables in your hosting settings. Also ensure the system clocks on your server and Google's servers are synchronized.`;
+        console.error('Authentication grant error. Check GOOGLE_PRIVATE_KEY and GOOGLE_CLIENT_EMAIL format and values in server environment variables. Clock skew might also be an issue.');
+    } else {
+        // Generic error for other cases
+        console.error('Unhandled Google Sheets API Error Details:', err);
+        detailedErrorMessage = `Could not load prompts due to an unexpected error. Please check the server logs for technical details. Raw error message: ${err.message || 'No message available'}`;
+    }
+
+    // Include additional details if available (e.g., from googleapis library response)
+    if (err.errors && Array.isArray(err.errors) && err.errors.length > 0) {
+        console.error(`Google API Error Details (${err.errors.length}):`);
         err.errors.forEach((e: any, i: number) => {
-            console.error(`Google API Error ${i+1}:`, e);
+            console.error(`  Error ${i+1}:`, e);
             detailedErrorMessage += `\nAPI Error Detail ${i+1}: ${e.message || JSON.stringify(e)}`;
         });
     }
 
-
-    // Provide fallback or error indication to the frontend
+    // Return a user-friendly error prompt to the frontend
     return [
        { id: `fetch-error-${err.code || 'unknown'}`, title: errorTitle, text: detailedErrorMessage, category: 'Error' },
     ];
-    // Option 2: Rethrow the error to be caught by the caller in production
-    // throw new Error(`Failed to fetch prompts from Google Sheets: ${err.message || 'Unknown error'}`);
+    // Option: Rethrow for server-side error pages or higher-level catching
+    // throw new Error(`Failed to fetch prompts from Google Sheets: ${detailedErrorMessage}`);
   }
 }

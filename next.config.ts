@@ -22,10 +22,10 @@ const nextConfig: NextConfig = {
   // and should be configured in your hosting environment (e.g., Vercel, Netlify)
   // and/or your local .env file. Remove the env block here.
   // env: {
-  //  NEXT_PUBLIC_GOOGLE_PRIVATE_KEY: process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY,
-  //  NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL,
-  //  NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID: process.env.NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID,
-  //  NEXT_PUBLIC_GOOGLE_SHEET_NAME: process.env.NEXT_PUBLIC_GOOGLE_SHEET_NAME,
+  //  GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY,
+  //  GOOGLE_CLIENT_EMAIL: process.env.GOOGLE_CLIENT_EMAIL,
+  //  GOOGLE_SPREADSHEET_ID: process.env.GOOGLE_SPREADSHEET_ID,
+  //  GOOGLE_SHEET_NAME: process.env.GOOGLE_SHEET_NAME,
   // },
 };
 

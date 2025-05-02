@@ -38,7 +38,7 @@ export default function Home() {
          console.error("Failed to load prompts via server action:", err);
          // Display a generic error message if the action throws an unexpected error
          setErrorTitle("Unexpected Error");
-         setError(err.message || "Failed to load prompts. Please try again later.");
+         setError(err.message || "Failed to load prompts. Please try again later. Check server logs for more details.");
          setPrompts([]);
       } finally {
         setIsLoading(false);
@@ -109,29 +109,32 @@ export default function Home() {
            <p className="text-sm whitespace-pre-wrap">{renderErrorMessage(error)}</p>
            {/* Specific guidance based on error title */}
            {errorTitle === 'Configuration Error' && (
-              <p className="text-sm mt-2">Make sure your <code className="bg-destructive/20 px-1 rounded">.env</code> file is correctly set up in the project root directory with all required variables (NEXT_PUBLIC_GOOGLE_PRIVATE_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL, NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID).</p>
+              <p className="text-sm mt-2">Make sure your <code className="bg-destructive/20 px-1 rounded">.env</code> file is correctly set up locally, or that the necessary environment variables (NEXT_PUBLIC_GOOGLE_PRIVATE_KEY, NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL, NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID) are configured in your deployment environment (e.g., Vercel, Netlify, server settings).</p>
            )}
            {errorTitle === 'Authentication Error' && (
               <div className="text-sm mt-2 space-y-1">
-                <p>This usually means the <code className="bg-destructive/20 px-1 rounded">NEXT_PUBLIC_GOOGLE_PRIVATE_KEY</code> in your <code className="bg-destructive/20 px-1 rounded">.env</code> file is formatted incorrectly.</p>
-                <p><strong>Important:</strong></p>
+                 {/* Message content is now dynamically set based on the error from the server action */}
+                <p>See details above. Common issues include:</p>
                 <ul className="list-disc list-inside pl-4">
-                    <li>The entire key, including <code className="bg-destructive/20 px-1 rounded">-----BEGIN PRIVATE KEY-----</code> and <code className="bg-destructive/20 px-1 rounded">-----END PRIVATE KEY-----</code>, must be enclosed in <strong className="font-semibold">double quotes</strong> (`"`).</li>
-                    <li>The newline characters within the key <strong className="font-semibold">must be represented as literal `\n` characters</strong>, exactly as copied from the Google Cloud JSON key file.</li>
+                    <li>Incorrectly formatted <code className="bg-destructive/20 px-1 rounded">NEXT_PUBLIC_GOOGLE_PRIVATE_KEY</code> (missing quotes, escaped newlines `\\n` instead of literal `\n`).</li>
+                    <li>Deployment environment incompatibility (check Node.js/OpenSSL versions with your host).</li>
                 </ul>
-                <p className="mt-1">Example format in <code className="bg-destructive/20 px-1 rounded">.env</code>:</p>
+                <p className="mt-1">Example format in <code className="bg-destructive/20 px-1 rounded">.env</code> or deployment variables:</p>
                 <pre className="bg-destructive/20 p-2 rounded text-xs overflow-x-auto"><code>{`NEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nYOUR_KEY_LINES_HERE\\nMORE_KEY_LINES_HERE\\n-----END PRIVATE KEY-----\\n"`}</code></pre>
-                <p>Please double-check your <code className="bg-destructive/20 px-1 rounded">.env</code> file, save it, and restart the development server (`npm run dev`).</p>
+                <p>Double-check your configuration, save changes, and redeploy or restart the server.</p>
               </div>
            )}
            {errorTitle === 'Permission Denied' && (
              <p className="text-sm mt-2">Ensure the Google Service Account email listed in the error message has been shared with your Google Sheet with at least 'Viewer' permissions.</p>
            )}
             {errorTitle === 'Spreadsheet Not Found' && (
-             <p className="text-sm mt-2">Verify that the `NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID` in your `.env` file is correct.</p>
+             <p className="text-sm mt-2">Verify that the `NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID` in your environment variables is correct.</p>
            )}
-           {errorTitle === 'Error Loading Prompts' && !error.includes('PEM_read_bio_PrivateKey') && !error.includes('PERMISSION_DENIED') && !error.includes('Requested entity was not found') && (
-             <p className="text-sm mt-2">Please verify your Google Sheet ID, Sheet Name in `.env`, and ensure the service account email has access to the sheet.</p>
+           {/* General fallback guidance */}
+           {errorTitle !== 'Configuration Error' && errorTitle !== 'Authentication Error' && errorTitle !== 'Permission Denied' && errorTitle !== 'Spreadsheet Not Found' && (
+             <p className="text-sm mt-2">
+                Please verify your Google Sheet ID, Sheet Name, and Service Account permissions. If using a custom domain, ensure your hosting environment variables are correctly set up and the deployment has access to the Google Sheets API. Check server logs for more specific error details.
+             </p>
            )}
          </div>
        )}
@@ -170,7 +173,7 @@ export default function Home() {
            {/* Message shown if initial fetch yielded no prompts (and no error) */}
            {!isLoading && !error && prompts.length === 0 && (
              <p className="text-center col-span-full text-muted-foreground py-10">
-                No prompts are currently available in the library, or the Google Sheet is empty/inaccessible. Check sheet permissions and `.env` configuration if this persists.
+                No prompts are currently available in the library, or the Google Sheet is empty/inaccessible. Check sheet permissions and environment variable configuration (especially if deployed) if this persists.
              </p>
            )}
          </div>

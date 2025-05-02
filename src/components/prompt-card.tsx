@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -11,9 +12,10 @@ import { cn } from '@/lib/utils';
 
 interface PromptCardProps {
   prompt: Prompt;
+  className?: string; // Add className prop
 }
 
-export function PromptCard({ prompt }: PromptCardProps) {
+export function PromptCard({ prompt, className }: PromptCardProps) {
   const { toast } = useToast(); // Initialize toast
 
   const handleCopy = () => {
@@ -45,7 +47,10 @@ export function PromptCard({ prompt }: PromptCardProps) {
   };
 
   return (
-    <Card className="flex flex-col h-full bg-card shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg overflow-hidden border border-border">
+    <Card className={cn(
+        "flex flex-col bg-card shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg overflow-hidden border border-border",
+        className // Apply className prop
+        )}>
       <CardHeader className="pb-3">
         <CardTitle className="text-lg font-semibold text-primary">{prompt.title}</CardTitle>
         {prompt.category && (

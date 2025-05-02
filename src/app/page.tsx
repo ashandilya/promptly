@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -53,10 +54,9 @@ export default function Home() {
 
       } catch (err: any) {
         console.error('Error fetching prompts from Google Sheets:', err);
+        // Use the more detailed error message thrown by fetchPromptsFromSheet
         const errorMessage = err.message || 'An unknown error occurred';
-        // Attempt to get more specific error details if available
-        const nestedErrorMessage = err.cause?.message || errorMessage;
-        setError(`Could not load prompts from Google Sheets: ${nestedErrorMessage}. Please check configuration and network.`);
+        setError(errorMessage); // Set the full error message from sheets.ts
         setPrompts([]); // Clear prompts on error
       } finally {
         setIsLoading(false);
@@ -73,10 +73,10 @@ export default function Home() {
       prompts.map(p => p.category).filter((c): c is string => !!c && c !== 'Uncategorized') // Filter out empty/null/default categories
     );
     const sortedCategories = ['all', ...Array.from(uniqueCategories).sort()];
-     // Only add 'Uncategorized' if there are actually uncategorized prompts
-    if (prompts.some(p => p.category === 'Uncategorized')) {
-        sortedCategories.push('Uncategorized');
-    }
+     // Only add 'Uncategorized' if there are actually uncategorized prompts and it's not already included
+     if (prompts.some(p => p.category === 'Uncategorized') && !uniqueCategories.has('Uncategorized')) {
+       sortedCategories.push('Uncategorized');
+     }
     return sortedCategories;
   }, [prompts]);
 
@@ -117,9 +117,10 @@ export default function Home() {
                 <Terminal className="h-4 w-4 text-destructive-foreground" />
                 <AlertTitle>Error Loading Prompts</AlertTitle>
                 <AlertDescription>
+                  {/* Display the potentially more detailed error message */}
                   <p>{error}</p>
                   <p className="mt-2 text-sm">
-                     Please check the console for more details or try refreshing the page. Verify Google Sheets configuration and permissions.
+                     Please check the console logs for more technical details. If the problem persists, verify your Google Sheets setup (ID, Sheet Name, Permissions, API Key format) and environment variables.
                   </p>
                 </AlertDescription>
               </Alert>
@@ -187,7 +188,7 @@ export default function Home() {
             <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow">
               <p className="text-lg font-medium">
                 {prompts.length === 0
-                  ? "No prompts available. Check the Google Sheet or configuration." // If initial load resulted in zero prompts (and no error)
+                  ? "No prompts available. Check the Google Sheet, its content, and configuration." // If initial load resulted in zero prompts (and no error)
                   : "No prompts match your search or filter."}
               </p>
               {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}

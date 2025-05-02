@@ -9,6 +9,9 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        styrene: ['"Styrene B"', 'system-ui', '-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', '"Open Sans"', '"Helvetica Neue"', 'sans-serif'],
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -21,8 +24,10 @@ export default {
   				foreground: 'hsl(var(--popover-foreground))'
   			},
   			primary: {
-  				DEFAULT: 'hsl(var(--primary))',
-  				foreground: 'hsl(var(--primary-foreground))'
+          // DEFAULT: 'hsl(var(--primary))', // Button Text Color (White)
+          // foreground: 'hsl(var(--primary-foreground))' // Button Background Color (Red)
+           DEFAULT: 'hsl(var(--primary-foreground))', // Swapped: Red Background
+           foreground: 'hsl(var(--primary))', // Swapped: White Text
   			},
   			secondary: {
   				DEFAULT: 'hsl(var(--secondary))',
@@ -82,11 +87,21 @@ export default {
   				to: {
   					height: '0'
   				}
-  			}
+  			},
+         sparkle: { // Add sparkle keyframe
+          '0%, 100%': { opacity: '0.5', transform: 'scale(0.8)' },
+          '50%': { opacity: '1', transform: 'scale(1)' },
+        },
+        twinkle: { // Add twinkle keyframe
+           '0%, 100%': { opacity: '0.2' },
+           '50%': { opacity: '0.8' },
+         },
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
-  			'accordion-up': 'accordion-up 0.2s ease-out'
+  			'accordion-up': 'accordion-up 0.2s ease-out',
+        sparkle: 'sparkle var(--sparkle-duration, 3s) infinite alternate var(--sparkle-delay, 0s)', // Add sparkle animation
+        twinkle: 'twinkle var(--twinkle-duration, 4s) infinite alternate var(--twinkle-delay, 0s)', // Add twinkle animation
   		}
   	}
   },

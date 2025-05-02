@@ -4,6 +4,7 @@
 
 body {
   /* Removed specific font-family here, will rely on layout.tsx or browser defaults */
+  font-family: 'Styrene B', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* Updated font */
 }
 
 @layer base {
@@ -14,8 +15,8 @@ body {
     --card-foreground: 208 100% 15%; /* Dark Blue Text */
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 208 100% 15%; /* Dark Blue Text */
-    --primary: 208 100% 15%; /* Dark Blue (#003049) */
-    --primary-foreground: 0 0% 98%; /* White Text */
+    --primary: 0 0% 100%; /* White for Button Text */
+    --primary-foreground: 0 75% 55%; /* Red for Button Background */
     --secondary: 0 0% 94%; /* Lighter Gray */
     --secondary-foreground: 208 100% 15%; /* Dark Blue Text */
     --muted: 0 0% 96.1%; /* Near White */
@@ -51,7 +52,7 @@ body {
     --popover: 208 100% 10%; /* Very Dark Blue */
     --popover-foreground: 0 0% 98%; /* White Text */
     --primary: 0 0% 98%; /* White */
-    --primary-foreground: 208 100% 15%; /* Dark Blue Text */
+    --primary-foreground: 0 75% 55%; /* Red Button Background */
     --secondary: 0 0% 14.9%; /* Dark Gray */
     --secondary-foreground: 0 0% 98%; /* White Text */
     --muted: 0 0% 14.9%; /* Dark Gray */
@@ -85,6 +86,48 @@ body {
   }
   body {
     @apply bg-background text-foreground; /* Use background (off-white) */
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; /* Apply system font stack */
+    /* font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif; */ /* Apply system font stack */
   }
+}
+
+/* Add custom font face */
+@font-face {
+  font-family: 'Styrene B';
+  src: url('/fonts/StyreneB-Regular.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Styrene B';
+  src: url('/fonts/StyreneB-Bold.otf') format('opentype');
+  font-weight: bold;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'Styrene B';
+  src: url('/fonts/StyreneB-Light.otf') format('opentype');
+  font-weight: 300;
+  font-style: normal;
+}
+/* Add other weights/styles if needed */
+
+/* Sparkling Star Animations */
+@keyframes sparkle {
+  0%, 100% { opacity: 0.5; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 0.8; }
+}
+
+.sparkle-animation {
+  animation: sparkle var(--sparkle-duration) infinite alternate;
+  animation-delay: var(--sparkle-delay);
+}
+
+.twinkle-animation {
+  animation: twinkle var(--twinkle-duration) infinite alternate;
+  animation-delay: var(--twinkle-delay);
 }

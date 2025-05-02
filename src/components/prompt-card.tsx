@@ -52,7 +52,8 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
         className // Apply className prop
         )}>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-semibold text-primary">{prompt.title}</CardTitle>
+        {/* Use primary-foreground (red) for title to match button */}
+        <CardTitle className="text-lg font-semibold text-primary-foreground">{prompt.title}</CardTitle>
         {prompt.category && (
           <Badge variant="secondary" className="mt-2 w-fit">{prompt.category}</Badge>
         )}
@@ -63,12 +64,11 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
       </CardContent>
       <CardFooter className="pt-0 pb-4 px-4 mt-auto"> {/* Added mt-auto to push footer down */}
         <Button
-          variant="outline"
+          variant="default" // Use default variant which now uses primary (red background, white text)
           size="sm"
           onClick={handleCopy}
           className={cn(
-              "w-full bg-accent text-accent-foreground hover:bg-accent/90 transition-colors duration-200",
-              "border-accent hover:border-accent/90" // Keep border matching the accent color
+              "w-full transition-colors duration-200" // Simplified classes, rely on theme
           )}
           aria-label={`Copy prompt: ${prompt.title}`}
         >

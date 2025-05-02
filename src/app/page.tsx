@@ -17,6 +17,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
 import Masonry from 'react-masonry-css'; // Import Masonry
+import { SparklingStarfield } from '@/components/sparkling-starfield'; // Import Starfield
 
 export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
@@ -107,84 +108,89 @@ export default function Home() {
 
 
   return (
-    <main className="container mx-auto px-4 py-8">
-      <header className="mb-8 text-center">
-        <h1 className="text-4xl font-bold text-primary mb-2">Promptly</h1>
-        <p className="text-lg text-muted-foreground">
-          Your Library for B2B Marketing Prompts
-        </p>
-      </header>
+    <main className="container mx-auto px-4 py-8 relative min-h-screen">
+       {/* Add Starfield background */}
+      <SparklingStarfield className="absolute inset-0 -z-10" />
 
-      {error && (
-          <Alert variant="destructive" className="mb-6">
-            <Terminal className="h-4 w-4" />
-            <AlertTitle>{error.split(':')[0] || 'Error Loading Prompts'}</AlertTitle>
-            <AlertDescription>
-               <pre className="whitespace-pre-wrap break-words text-sm font-mono">{error}</pre>
-               <p className="mt-2 text-sm">Please check your Google Sheet configuration and server environment variables. Refer to the server logs (if available) for more detailed technical information.</p>
-             </AlertDescription>
-          </Alert>
-       )}
+      <div className="relative z-10"> {/* Ensure content is above the starfield */}
+          <header className="mb-8 text-center">
+            <h1 className="text-4xl font-bold text-primary-foreground mb-2">Promptly</h1> {/* Adjusted text color if needed based on background */}
+            <p className="text-lg text-muted-foreground">
+              Your Library for B2B Marketing Prompts
+            </p>
+          </header>
 
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
-        <Input
-          type="text"
-          placeholder="Search prompts..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-grow bg-card border-border focus:ring-ring"
-          aria-label="Search prompts"
-          disabled={isLoading || !!error}
-        />
-        <Select
-          value={selectedCategory}
-          onValueChange={setSelectedCategory}
-          aria-label="Filter by category"
-          disabled={isLoading || !!error || categories.length <= 1}
-        >
-          <SelectTrigger className="w-full sm:w-[180px] bg-card border-border focus:ring-ring">
-            <SelectValue placeholder="Filter by category" />
-          </SelectTrigger>
-          <SelectContent className="bg-popover border-border">
-            {categories.length > 1 ? categories.map((category) => (
-              <SelectItem key={category} value={category} className="capitalize cursor-pointer focus:bg-accent focus:text-accent-foreground">
-                {category === 'all' ? 'All Categories' : category}
-              </SelectItem>
-             )) : (
-               <SelectItem value="all" disabled>No categories found</SelectItem>
-             )}
-          </SelectContent>
-        </Select>
+          {error && (
+              <Alert variant="destructive" className="mb-6 bg-card"> {/* Ensure alert has background */}
+                <Terminal className="h-4 w-4" />
+                <AlertTitle>{error.split(':')[0] || 'Error Loading Prompts'}</AlertTitle>
+                <AlertDescription>
+                  <pre className="whitespace-pre-wrap break-words text-sm font-mono">{error}</pre>
+                  <p className="mt-2 text-sm">Please check your Google Sheet configuration and server environment variables. Refer to the server logs (if available) for more detailed technical information.</p>
+                </AlertDescription>
+              </Alert>
+          )}
+
+          <div className="mb-6 flex flex-col sm:flex-row gap-4">
+            <Input
+              type="text"
+              placeholder="Search prompts..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-grow bg-card border-border focus:ring-ring"
+              aria-label="Search prompts"
+              disabled={isLoading || !!error}
+            />
+            <Select
+              value={selectedCategory}
+              onValueChange={setSelectedCategory}
+              aria-label="Filter by category"
+              disabled={isLoading || !!error || categories.length <= 1}
+            >
+              <SelectTrigger className="w-full sm:w-[180px] bg-card border-border focus:ring-ring">
+                <SelectValue placeholder="Filter by category" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border-border">
+                {categories.length > 1 ? categories.map((category) => (
+                  <SelectItem key={category} value={category} className="capitalize cursor-pointer focus:bg-accent focus:text-accent-foreground">
+                    {category === 'all' ? 'All Categories' : category}
+                  </SelectItem>
+                )) : (
+                  <SelectItem value="all" disabled>No categories found</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {isLoading ? (
+            <Masonry
+              breakpointCols={breakpointColumnsObj}
+              className="flex w-auto -ml-4" // Adjust negative margin to counteract column spacing
+              columnClassName="pl-4 bg-clip-padding" // Add spacing between columns
+            >
+              {renderSkeletons(6)}
+            </Masonry>
+          ) : !error && filteredPrompts.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground bg-background/80 rounded p-4"> {/* Add slight background */}
+              <p>
+                {prompts.length === 0
+                  ? "No prompts were found in the connected Google Sheet."
+                  : "No prompts found matching your current search or filter."}
+              </p>
+              {prompts.length > 0 && <p>Try adjusting your search term or category filter.</p>}
+            </div>
+          ) : !error ? (
+            <Masonry
+              breakpointCols={breakpointColumnsObj}
+              className="flex w-auto -ml-4" // Adjust negative margin to counteract column spacing
+              columnClassName="pl-4 bg-clip-padding" // Add spacing between columns
+            >
+              {filteredPrompts.map((prompt) => (
+                <PromptCard key={prompt.id} prompt={prompt} className="mb-4" /> // Add mb-4 for vertical spacing
+              ))}
+            </Masonry>
+          ) : null }
       </div>
-
-       {isLoading ? (
-         <Masonry
-           breakpointCols={breakpointColumnsObj}
-           className="flex w-auto -ml-4" // Adjust negative margin to counteract column spacing
-           columnClassName="pl-4 bg-clip-padding" // Add spacing between columns
-         >
-           {renderSkeletons(6)}
-         </Masonry>
-       ) : !error && filteredPrompts.length === 0 ? (
-         <div className="text-center py-12 text-muted-foreground">
-           <p>
-             {prompts.length === 0
-               ? "No prompts were found in the connected Google Sheet."
-               : "No prompts found matching your current search or filter."}
-           </p>
-            {prompts.length > 0 && <p>Try adjusting your search term or category filter.</p>}
-         </div>
-       ) : !error ? (
-         <Masonry
-           breakpointCols={breakpointColumnsObj}
-           className="flex w-auto -ml-4" // Adjust negative margin to counteract column spacing
-           columnClassName="pl-4 bg-clip-padding" // Add spacing between columns
-         >
-           {filteredPrompts.map((prompt) => (
-             <PromptCard key={prompt.id} prompt={prompt} className="mb-4" /> // Add mb-4 for vertical spacing
-           ))}
-         </Masonry>
-       ) : null }
     </main>
   );
 }

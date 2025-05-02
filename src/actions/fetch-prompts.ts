@@ -11,23 +11,25 @@ import type { Prompt } from '@/types/prompt';
 export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   console.log('Attempting to fetch prompts from Google Sheet...');
 
-  // Note: Using NEXT_PUBLIC_ for server-side code is not ideal for security.
-  // Consider removing NEXT_PUBLIC_ prefix if these are only used server-side.
-  const privateKey = process.env.NEXT_PUBLIC_GOOGLE_PRIVATE_KEY;
-  const clientEmail = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL;
-  const spreadsheetId = process.env.NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID;
-  const sheetName = process.env.NEXT_PUBLIC_GOOGLE_SHEET_NAME || 'Sheet1'; // Default to Sheet1 if not set
+  // Access environment variables directly for server-side code.
+  // Ensure these variables (GOOGLE_PRIVATE_KEY, GOOGLE_CLIENT_EMAIL, GOOGLE_SPREADSHEET_ID, GOOGLE_SHEET_NAME)
+  // are set in your deployment environment (e.g., Vercel, Netlify) *without* the NEXT_PUBLIC_ prefix.
+  // Also, update your local .env file accordingly.
+  const privateKey = process.env.GOOGLE_PRIVATE_KEY;
+  const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
+  const spreadsheetId = process.env.GOOGLE_SPREADSHEET_ID;
+  const sheetName = process.env.GOOGLE_SHEET_NAME || 'Sheet1'; // Default to Sheet1 if not set
   const range = `${sheetName}!A:D`; // Assuming columns A-D: id, title, text, category
 
   if (!privateKey || !clientEmail || !spreadsheetId) {
     const missingVars = [
-      !privateKey ? 'NEXT_PUBLIC_GOOGLE_PRIVATE_KEY' : null,
-      !clientEmail ? 'NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL' : null,
-      !spreadsheetId ? 'NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID' : null,
+      !privateKey ? 'GOOGLE_PRIVATE_KEY' : null,
+      !clientEmail ? 'GOOGLE_CLIENT_EMAIL' : null,
+      !spreadsheetId ? 'GOOGLE_SPREADSHEET_ID' : null,
     ].filter(Boolean).join(', ');
-    console.error(`Configuration Error: Missing Google API credentials or Spreadsheet ID in environment variables: ${missingVars}`);
+    console.error(`Configuration Error: Missing Google API credentials or Spreadsheet ID in server environment variables: ${missingVars}`);
      return [
-       { id: 'config-error-1', title: 'Configuration Error', text: `Missing required environment variables: ${missingVars}. Please check your .env file and server configuration.\n\nIf deployed, ensure these variables are set in your hosting environment.`, category: 'Setup Error' },
+       { id: 'config-error-1', title: 'Configuration Error', text: `Missing required server environment variables: ${missingVars}. \n\nPlease ensure GOOGLE_PRIVATE_KEY, GOOGLE_CLIENT_EMAIL, and GOOGLE_SPREADSHEET_ID are set in your hosting environment (e.g., Vercel, Netlify) and in your local .env file. These variables should NOT start with NEXT_PUBLIC_.`, category: 'Setup Error' },
      ];
      // Consider throwing an error instead in a real production scenario
      // throw new Error(`Missing Google API credentials or Spreadsheet ID: ${missingVars}`);
@@ -41,7 +43,7 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   // console.log(`Private Key starts with: ${privateKey.substring(0, 30)}... ends with: ...${privateKey.substring(privateKey.length - 30)}`);
 
   // Ensure the private key includes literal newlines if copied directly from the JSON file.
-  // The .env file should look like: NEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+  // The .env file should look like: GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
   // The google-auth-library handles the literal newlines correctly.
   // Replace escaped newlines \\n with literal newlines \n if they exist.
   const processedPrivateKey = privateKey.replace(/\\n/g, '\n');
@@ -117,17 +119,17 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
        if (err.code === 'ERR_OSSL_UNSUPPORTED' || (err.message && (err.message.includes('PEM_read_bio_PrivateKey') || err.message.includes('DECODER routines::unsupported') || err.message.includes('error:0A00018E:SSL routines::ca md too weak') ))) {
           errorTitle = 'Authentication Error';
           // Updated detailed message for the frontend
-          detailedErrorMessage = `Could not authenticate with Google. This often indicates an issue with the format of the NEXT_PUBLIC_GOOGLE_PRIVATE_KEY in your .env file OR an incompatibility in the deployment environment.\n\n1. **Check Key Format:** Ensure the key in .env is enclosed in double quotes ("...") and includes literal '\\n' characters for newlines, exactly as copied from the Google Cloud JSON key file.\n\nExample format in .env:\nNEXT_PUBLIC_GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n-----END PRIVATE KEY-----\\n"\n\n2. **Check Deployment Environment:** Some hosting platforms might have restrictions or older SSL libraries causing this. Check your hosting provider's documentation or support regarding Node.js version and OpenSSL compatibility.\n\nPlease verify the key format, save the .env file, and restart your development server. If deployed, ensure the environment variable is correctly set and formatted in your hosting provider's settings.`;
+          detailedErrorMessage = `Could not authenticate with Google. This often indicates an issue with the format of the GOOGLE_PRIVATE_KEY in your server environment variables OR an incompatibility in the deployment environment.\n\n1. **Check Key Format:** Ensure the key in your hosting environment variables (and local .env) is enclosed in double quotes ("...") and includes literal '\\n' characters for newlines, exactly as copied from the Google Cloud JSON key file.\n\nExample format in .env or hosting variables:\nGOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\n...your key content...\\n-----END PRIVATE KEY-----\\n"\n\n2. **Check Deployment Environment:** Some hosting platforms might have restrictions or older SSL libraries causing this. Check your hosting provider's documentation or support regarding Node.js version and OpenSSL compatibility.\n\nPlease verify the key format, save the .env file, and restart your development server. If deployed, ensure the environment variable is correctly set and formatted in your hosting provider's settings and redeploy.`;
           // Log a more detailed message server-side
-          console.error('Authentication failed. Potential issue with NEXT_PUBLIC_GOOGLE_PRIVATE_KEY format in .env (ensure double quotes and literal \\n) OR deployment environment incompatibility (Node/OpenSSL).');
+          console.error('Authentication failed. Potential issue with GOOGLE_PRIVATE_KEY format in environment variables (ensure double quotes and literal \\n) OR deployment environment incompatibility (Node/OpenSSL).');
        } else if (err.code === 403 || (err.message && err.message.includes('PERMISSION_DENIED'))) {
            errorTitle = 'Permission Denied';
            detailedErrorMessage = `The service account ('${clientEmail}') does not have permission to access the Google Sheet.\n\nPlease ensure the service account email has been granted 'Viewer' (or 'Editor') access to the Google Sheet with ID '${spreadsheetId}'. Check sharing settings in Google Sheets.`;
            console.error(`Permission denied for service account '${clientEmail}' on spreadsheet '${spreadsheetId}'. Check sharing permissions.`);
        } else if (err.code === 404 || (err.message && err.message.includes('Requested entity was not found'))) {
            errorTitle = 'Spreadsheet Not Found';
-           detailedErrorMessage = `The specified Google Sheet could not be found.\n\nPlease verify that the NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') in your .env file is correct and that the spreadsheet exists.`;
-           console.error(`Spreadsheet not found with ID '${spreadsheetId}'. Verify NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID in .env.`);
+           detailedErrorMessage = `The specified Google Sheet could not be found.\n\nPlease verify that the GOOGLE_SPREADSHEET_ID ('${spreadsheetId}') in your environment variables is correct and that the spreadsheet exists.`;
+           console.error(`Spreadsheet not found with ID '${spreadsheetId}'. Verify GOOGLE_SPREADSHEET_ID in environment variables.`);
        } else {
          // Log the raw error details for less common errors
          console.error('Unhandled Google Sheets API Error Details:', err);
@@ -136,7 +138,7 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
        // Catch potential errors during auth.getClient()
        console.error('Error obtaining Google Auth client:', err);
        errorTitle = 'Authentication Setup Error';
-       detailedErrorMessage = `Failed to initialize Google Authentication. Check the server logs for details. This might be due to invalid credentials format or network issues during authentication setup. Ensure NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL and NEXT_PUBLIC_GOOGLE_PRIVATE_KEY are correctly formatted.`;
+       detailedErrorMessage = `Failed to initialize Google Authentication. Check the server logs for details. This might be due to invalid credentials format or network issues during authentication setup. Ensure GOOGLE_CLIENT_EMAIL and GOOGLE_PRIVATE_KEY are correctly formatted in the environment.`;
     }
 
     // Include additional error details if available (e.g., from googleapis library)

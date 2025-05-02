@@ -14,7 +14,7 @@ import {
 // Skeleton import removed as it's not used in the loading state
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
-import Masonry from 'react-masonry-css'; // Ensure this import is correct
+// Removed Masonry import as the package is causing issues and will be replaced with CSS grid
 import { SparklingStarfield } from '@/components/sparkling-starfield';
 
 
@@ -83,13 +83,6 @@ export default function Home() {
       return matchesSearch && matchesCategory;
     });
   }, [prompts, searchTerm, selectedCategory]); // Recalculate when these change
-
-  // Define breakpoints for the Masonry layout
-  const breakpointColumnsObj = {
-    default: 3, // 3 columns by default
-    1100: 2,   // 2 columns on screens <= 1100px
-    700: 1     // 1 column on screens <= 700px
-  };
 
 
   return (
@@ -170,16 +163,12 @@ export default function Home() {
               {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}
             </div>
           ) : !error ? (
-             // Display prompts using Masonry layout if not loading and no error
-            <Masonry
-              breakpointCols={breakpointColumnsObj}
-              className="flex w-auto -ml-4" // Negative margin to counteract padding
-              columnClassName="pl-4 bg-clip-padding" // Padding for spacing between columns
-            >
-              {filteredPrompts.map((prompt) => (
-                <PromptCard key={prompt.id} prompt={prompt} className="mb-4" /> // Margin bottom for spacing between cards vertically
-              ))}
-            </Masonry>
+             // Display prompts using CSS Grid layout (replaces Masonry)
+             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+               {filteredPrompts.map((prompt) => (
+                 <PromptCard key={prompt.id} prompt={prompt} />
+               ))}
+             </div>
           ) : null /* Don't render anything if there's an error (handled by the Alert) */ }
       </div>
     </main>

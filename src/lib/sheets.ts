@@ -1,3 +1,4 @@
+
 'use server';
 
 import { google } from 'googleapis';
@@ -5,39 +6,39 @@ import type { Prompt } from '@/types/prompt';
 
 // Function to safely get environment variables
 function getEnvVariable(key: string, isPublic: boolean = false): string {
-  const envVarKey = isPublic ? `NEXT_PUBLIC_${key}` : key;
+  // Ensure sensitive keys like PRIVATE_KEY are not prefixed with NEXT_PUBLIC_
+  const envVarKey = (key === 'GOOGLE_PRIVATE_KEY' || key === 'GOOGLE_CLIENT_EMAIL') ? key : (isPublic ? `NEXT_PUBLIC_${key}` : key);
   const value = process.env[envVarKey];
   if (!value) {
     console.error(`Error: Environment variable ${envVarKey} is not set.`);
-    throw new Error(`Missing required environment variable: ${envVarKey}`);
+    // Throw a more specific error for missing credentials
+    const errorMsg = `Missing required environment variable: ${envVarKey}. Please ensure it is correctly set in your environment configuration.`;
+    if (envVarKey === 'GOOGLE_PRIVATE_KEY' || envVarKey === 'GOOGLE_CLIENT_EMAIL') {
+        throw new Error(`${errorMsg} This is required for Google Sheets authentication.`);
+    } else {
+        throw new Error(errorMsg);
+    }
   }
   return value;
 }
 
-// Function to parse the private key, handling escaped newlines
-function parsePrivateKey(key: string): string {
-  try {
-    // Replace literal \n with actual newline characters
-    return key.replace(/\\n/g, '\n');
-  } catch (error) {
-    console.error('Error parsing private key:', error);
-    throw new Error('Invalid private key format.');
-  }
-}
+// Removed the parsePrivateKey function as google-auth-library can handle the key string directly
+// if it's properly formatted in the environment variable (single line with literal \n characters).
 
 export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   try {
     // Access sensitive keys directly from process.env, NOT NEXT_PUBLIC_
-    const privateKey = parsePrivateKey(getEnvVariable('GOOGLE_PRIVATE_KEY'));
+    // Ensure the private key is stored as a single-line string with literal '\n' for newlines in the .env file
+    const privateKey = getEnvVariable('GOOGLE_PRIVATE_KEY');
     const clientEmail = getEnvVariable('GOOGLE_CLIENT_EMAIL');
-    // Public variables can keep the prefix if needed elsewhere client-side, but usually not necessary for spreadsheet ID/name
-    const spreadsheetId = getEnvVariable('GOOGLE_SPREADSHEET_ID', true); // Keep public if needed client-side for some reason
-    const sheetName = getEnvVariable('GOOGLE_SHEET_NAME', true) || 'Sheet1'; // Default to Sheet1
+    // Public variables
+    const spreadsheetId = getEnvVariable('GOOGLE_SPREADSHEET_ID', true);
+    const sheetName = process.env.NEXT_PUBLIC_GOOGLE_SHEET_NAME || 'Sheet1'; // Use process.env directly for public vars too
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
         client_email: clientEmail,
-        private_key: privateKey,
+        private_key: privateKey, // Pass the key string directly
       },
       scopes: ['https://www.googleapis.com/auth/spreadsheets.readonly'],
     });
@@ -100,8 +101,17 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   } catch (err: any) {
     console.error('Error fetching or processing data from Google Sheets:', err);
     // Provide more context in the thrown error
-    // Ensure the actual sensitive error message isn't exposed if this runs client-side (which it shouldn't now)
-    const errorMessage = (err instanceof Error) ? err.message : 'Unknown error';
-    throw new Error(`Failed to fetch prompts from Google Sheets. ${errorMessage}. Check server logs and configuration/permissions.`, { cause: err });
+    const errorMessage = (err instanceof Error) ? err.message : String(err);
+    // Check if the error seems related to authentication/parsing
+    let hint = "Check server logs and configuration/permissions.";
+    if (errorMessage.includes('PEM routines') || errorMessage.includes('bad base64 decode') || errorMessage.includes('DECODER routines') || errorMessage.includes('unsupported')) {
+        hint = "There might be an issue with the GOOGLE_PRIVATE_KEY format in your environment variables. Ensure it's a single line string with literal '\\n' for newlines."
+    } else if (errorMessage.includes('permission') || errorMessage.includes('denied')) {
+        hint = "Check Google Sheet sharing settings and service account permissions."
+    } else if (errorMessage.includes('Requested entity was not found')) {
+        hint = "Verify GOOGLE_SPREADSHEET_ID and GOOGLE_SHEET_NAME are correct."
+    }
+
+    throw new Error(`Failed to fetch prompts from Google Sheets. ${errorMessage}. ${hint}`, { cause: err });
   }
 }

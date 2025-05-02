@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { fetchPromptsFromSheet } from '@/actions/fetch-prompts';
+// Removed fetchPromptsFromSheet import
 import { PromptCard } from '@/components/prompt-card';
 import type { Prompt } from '@/types/prompt';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,19 @@ import { Terminal } from 'lucide-react';
 import Masonry from 'react-masonry-css'; // Import Masonry
 import { SparklingStarfield } from '@/components/sparkling-starfield'; // Import Starfield
 
+// Reintroduce sample prompts for local testing/fallback
+const samplePrompts: Prompt[] = [
+  { id: '1', title: 'Generate Blog Post Ideas', text: 'Brainstorm 10 blog post titles about [topic] targeting [audience].', category: 'Content Creation' },
+  { id: '2', title: 'Write Email Subject Lines', text: 'Create 5 compelling email subject lines for a webinar about [webinar topic].', category: 'Email Marketing' },
+  { id: '3', title: 'Social Media Ad Copy', text: 'Write 3 variations of ad copy for a Facebook campaign promoting [product/service] to [target demographic]. Focus on [key benefit].', category: 'Social Media' },
+  { id: '4', title: 'SEO Keyword Research', text: 'List 15 long-tail keywords related to [core keyword] for a B2B SaaS company.', category: 'SEO' },
+  { id: '5', title: 'Develop Buyer Persona', text: 'Outline a buyer persona for a [job title] at a [company size] company in the [industry] industry. Include pain points and goals.', category: 'Strategy' },
+  { id: '6', title: 'Competitor Analysis', text: 'Identify 3 key competitors for [your company/product] and summarize their main marketing strategies.', category: 'Strategy' },
+  { id: '7', title: 'Value Proposition Statement', text: 'Draft a value proposition statement for [product/service] that highlights its unique benefit for [target customer].', category: 'Messaging' },
+  { id: '8', title: 'Website Call-to-Action', text: 'Suggest 3 clear and concise call-to-action (CTA) buttons for a landing page offering a [type of offer, e.g., free demo].', category: 'Website' },
+];
+
+
 export default function Home() {
   const [prompts, setPrompts] = useState<Prompt[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,54 +39,35 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null); // State to hold the error message string
 
   useEffect(() => {
-    async function loadPrompts() {
+    // Simulate loading and set prompts from local data
+    setIsLoading(true);
+    setError(null);
+    console.log("Loading prompts from local data...");
+
+    // Simulate a short delay to show loading state
+    const timer = setTimeout(() => {
       try {
-        setIsLoading(true);
-        setError(null); // Clear previous errors
-        console.log("Initiating prompt fetch from client...");
-        const fetchedPrompts = await fetchPromptsFromSheet();
-        console.log("Prompt fetch attempt completed on client. Result count:", fetchedPrompts.length);
-
-        // Check if the fetched data contains an error object from the server action
-        const fetchError = fetchedPrompts.find(p =>
-            p.id.startsWith('fetch-error-') ||
-            p.id.startsWith('config-error-')
-        );
-
-        if (fetchError) {
-          // Format the error message for display
-          const errorMessage = `${fetchError.title}: ${fetchError.text}`;
-          setError(errorMessage); // Set the error state string
-          setPrompts([]); // Clear prompts on error
-          console.error("Error received from fetchPromptsFromSheet action:", errorMessage);
-        } else {
-          setPrompts(fetchedPrompts);
-          if (fetchedPrompts.length === 0) {
-             console.log("Successfully fetched prompts, but the list is empty (or only headers were found in the sheet).");
-           } else {
-             console.log(`Successfully fetched and processed ${fetchedPrompts.length} prompts.`);
-           }
-        }
+        // Use sample prompts instead of fetching
+        setPrompts(samplePrompts);
+        console.log(`Loaded ${samplePrompts.length} sample prompts.`);
       } catch (err: any) {
-        // Catch unexpected client-side errors during the fetch process
-        console.error('Unexpected error in Home component during prompt loading:', err);
-        const clientErrorMessage = `An unexpected client-side error occurred while loading prompts: ${err.message || 'Unknown error'}. Check browser console and server logs for details.`;
-        setError(clientErrorMessage);
-        setPrompts([]); // Clear prompts on error
+        console.error('Error setting sample prompts:', err);
+        setError(`Failed to load sample prompts: ${err.message}`);
+        setPrompts([]);
       } finally {
-        setIsLoading(false); // Ensure loading state is turned off
+        setIsLoading(false); // Turn off loading state
       }
-    }
+    }, 500); // Adjust delay as needed (e.g., 500ms)
 
-    loadPrompts();
+    // Cleanup timer on unmount
+    return () => clearTimeout(timer);
+
   }, []); // Empty dependency array ensures this runs once on mount
 
   // Memoized list of unique categories derived from valid prompts
   const categories = useMemo(() => {
-    // Filter out any potential error objects before calculating categories
-    const validPrompts = prompts.filter(p => !p.id.startsWith('fetch-error-') && !p.id.startsWith('config-error-'));
     const uniqueCategories = new Set<string>();
-    validPrompts.forEach(prompt => {
+    prompts.forEach(prompt => {
       if (prompt.category) {
         uniqueCategories.add(prompt.category);
       }
@@ -83,11 +77,7 @@ export default function Home() {
 
   // Memoized list of prompts filtered by search term and category
   const filteredPrompts = useMemo(() => {
-    // Ensure we only filter valid prompts, not error objects
     return prompts.filter(prompt => {
-       if (prompt.id.startsWith('fetch-error-') || prompt.id.startsWith('config-error-')) {
-         return false; // Exclude error objects from the filtered list
-       }
       // Case-insensitive search matching title or text
       const matchesSearch = prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             prompt.text.toLowerCase().includes(searchTerm.toLowerCase());
@@ -143,7 +133,7 @@ export default function Home() {
                   {/* Use pre-wrap for better formatting of error messages */}
                   <pre className="whitespace-pre-wrap break-words text-sm font-mono">{error}</pre>
                   <p className="mt-2 text-sm">
-                    Please check your configuration (Google Sheet access, environment variables) and network connection. Refer to the server logs (if available) or browser console for more technical details.
+                    Please check the console for more details.
                   </p>
                 </AlertDescription>
               </Alert>
@@ -199,7 +189,7 @@ export default function Home() {
             <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow"> {/* Add subtle background/shadow */}
               <p className="text-lg font-medium">
                 {prompts.length === 0
-                  ? "No prompts found in the Google Sheet."
+                  ? "No prompts available." // Updated message for local data
                   : "No prompts match your search."}
               </p>
               {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}
@@ -208,8 +198,8 @@ export default function Home() {
             // Display prompts using Masonry layout if no error and prompts exist
             <Masonry
               breakpointCols={breakpointColumnsObj}
-              className="flex w-auto -ml-4"
-              columnClassName="pl-4 bg-clip-padding"
+              className="flex w-auto -ml-4" // "my-masonry-grid"
+              columnClassName="pl-4 bg-clip-padding" // "my-masonry-grid_column"
             >
               {filteredPrompts.map((prompt) => (
                 <PromptCard key={prompt.id} prompt={prompt} className="mb-4" /> {/* Add margin between cards */}

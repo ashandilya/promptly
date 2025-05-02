@@ -16,6 +16,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
 // Removed Masonry import as the package is causing issues and will be replaced with CSS grid
 import { SparklingStarfield } from '@/components/sparkling-starfield';
+import Link from 'next/link'; // Import Link for Next.js routing
 
 
 // Sample prompts for local testing/fallback
@@ -111,6 +112,19 @@ export default function Home() {
                 </AlertDescription>
               </Alert>
           )}
+
+          {/* Added link above search */}
+           <p className="text-center text-sm text-muted-foreground mb-4">
+            Know the person behind this?{' '}
+            <Link
+              href="https://www.linkedin.com/in/ashandilya64/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-accent"
+            >
+              Connect on LinkedIn
+            </Link>
+          </p>
 
           {/* Search and Filter controls */}
           <div className="mb-6 flex flex-col sm:flex-row gap-4">

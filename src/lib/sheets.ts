@@ -4,11 +4,12 @@ import { google } from 'googleapis';
 import type { Prompt } from '@/types/prompt';
 
 // Function to safely get environment variables
-function getEnvVariable(key: string): string {
-  const value = process.env[key];
+function getEnvVariable(key: string, isPublic: boolean = false): string {
+  const envVarKey = isPublic ? `NEXT_PUBLIC_${key}` : key;
+  const value = process.env[envVarKey];
   if (!value) {
-    console.error(`Error: Environment variable ${key} is not set.`);
-    throw new Error(`Missing required environment variable: ${key}`);
+    console.error(`Error: Environment variable ${envVarKey} is not set.`);
+    throw new Error(`Missing required environment variable: ${envVarKey}`);
   }
   return value;
 }
@@ -26,10 +27,12 @@ function parsePrivateKey(key: string): string {
 
 export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   try {
-    const privateKey = parsePrivateKey(getEnvVariable('NEXT_PUBLIC_GOOGLE_PRIVATE_KEY'));
-    const clientEmail = getEnvVariable('NEXT_PUBLIC_GOOGLE_CLIENT_EMAIL');
-    const spreadsheetId = getEnvVariable('NEXT_PUBLIC_GOOGLE_SPREADSHEET_ID');
-    const sheetName = process.env.NEXT_PUBLIC_GOOGLE_SHEET_NAME || 'Sheet1'; // Default to Sheet1
+    // Access sensitive keys directly from process.env, NOT NEXT_PUBLIC_
+    const privateKey = parsePrivateKey(getEnvVariable('GOOGLE_PRIVATE_KEY'));
+    const clientEmail = getEnvVariable('GOOGLE_CLIENT_EMAIL');
+    // Public variables can keep the prefix if needed elsewhere client-side, but usually not necessary for spreadsheet ID/name
+    const spreadsheetId = getEnvVariable('GOOGLE_SPREADSHEET_ID', true); // Keep public if needed client-side for some reason
+    const sheetName = getEnvVariable('GOOGLE_SHEET_NAME', true) || 'Sheet1'; // Default to Sheet1
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
@@ -97,6 +100,8 @@ export async function fetchPromptsFromSheet(): Promise<Prompt[]> {
   } catch (err: any) {
     console.error('Error fetching or processing data from Google Sheets:', err);
     // Provide more context in the thrown error
-    throw new Error(`Failed to fetch prompts from Google Sheets. ${err.message || 'Unknown error'}. Check sheet configuration and permissions.`, { cause: err });
+    // Ensure the actual sensitive error message isn't exposed if this runs client-side (which it shouldn't now)
+    const errorMessage = (err instanceof Error) ? err.message : 'Unknown error';
+    throw new Error(`Failed to fetch prompts from Google Sheets. ${errorMessage}. Check server logs and configuration/permissions.`, { cause: err });
   }
 }

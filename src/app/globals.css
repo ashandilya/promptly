@@ -90,22 +90,22 @@ body {
   }
 }
 
-/* Add custom font face */
+/* Add custom font face - Ensure fonts are in /public/fonts */
 @font-face {
   font-family: 'Styrene B';
-  src: url('/fonts/StyreneB-Regular.otf') format('opentype');
+  src: url('/fonts/StyreneB-Regular.otf') format('opentype'); /* Correct path relative to public */
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: 'Styrene B';
-  src: url('/fonts/StyreneB-Bold.otf') format('opentype');
+  src: url('/fonts/StyreneB-Bold.otf') format('opentype'); /* Correct path relative to public */
   font-weight: bold;
   font-style: normal;
 }
 @font-face {
   font-family: 'Styrene B';
-  src: url('/fonts/StyreneB-Light.otf') format('opentype');
+  src: url('/fonts/StyreneB-Light.otf') format('opentype'); /* Correct path relative to public */
   font-weight: 300;
   font-style: normal;
 }

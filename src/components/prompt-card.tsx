@@ -18,6 +18,11 @@ interface PromptCardProps {
 export function PromptCard({ prompt, className }: PromptCardProps) {
   const { toast } = useToast(); // Initialize toast
 
+  // Fallback for missing prompt data
+  const title = prompt?.title ?? 'Untitled Prompt';
+  const text = prompt?.text ?? 'No content available.';
+  const category = prompt?.category;
+
   const handleCopy = () => {
     // navigator.clipboard.writeText requires a secure context (HTTPS or localhost)
     if (!navigator.clipboard) {
@@ -29,7 +34,7 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
       return;
     }
 
-    navigator.clipboard.writeText(prompt.text)
+    navigator.clipboard.writeText(text) // Use the safe 'text' variable
       .then(() => {
         toast({
           title: "Copied!",
@@ -53,14 +58,14 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
         )}>
       <CardHeader className="pb-3">
         {/* Use primary-foreground (red) for title to match button */}
-        <CardTitle className="text-lg font-semibold text-primary-foreground">{prompt.title}</CardTitle>
-        {prompt.category && (
-          <Badge variant="secondary" className="mt-2 w-fit">{prompt.category}</Badge>
+        <CardTitle className="text-lg font-semibold text-primary-foreground">{title}</CardTitle> {/* Use safe 'title' */}
+        {category && ( // Use safe 'category'
+          <Badge variant="secondary" className="mt-2 w-fit">{category}</Badge>
         )}
       </CardHeader>
       <CardContent className="flex-grow pt-0 pb-4">
         {/* Use pre-wrap to preserve line breaks within the prompt text */}
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{prompt.text}</p>
+        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{text}</p> {/* Use safe 'text' */}
       </CardContent>
       <CardFooter className="pt-0 pb-4 px-4 mt-auto"> {/* Added mt-auto to push footer down */}
         <Button
@@ -70,7 +75,8 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
           className={cn(
               "w-full transition-colors duration-200" // Simplified classes, rely on theme
           )}
-          aria-label={`Copy prompt: ${prompt.title}`}
+          aria-label={`Copy prompt: ${title}`} // Use safe 'title'
+          disabled={!text} // Disable button if no text to copy
         >
           <ClipboardCopy className="mr-2 h-4 w-4" />
           Copy Prompt

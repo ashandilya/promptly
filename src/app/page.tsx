@@ -30,14 +30,19 @@ const breakpointColumnsObj = {
 
 export default function Home() {
   // Initialize state with data from the imported JSON file
-  const [prompts, setPrompts] = useState<Prompt[]>(promptsData);
-  // isLoading and error states are no longer needed as data is local
-  // const [isLoading, setIsLoading] = useState(true);
-  // const [error, setError] = useState<string | null>(null);
+  // Ensure promptsData is an array, default to empty array if not
+  const [prompts, setPrompts] = useState<Prompt[]>(Array.isArray(promptsData) ? promptsData : []);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
-  // useEffect hook for fetching data is removed as data is loaded directly
+ // Log initial data
+  useEffect(() => {
+    console.log("Initial prompts data:", prompts);
+    if (!Array.isArray(promptsData)) {
+      console.error("Error: promptsData from JSON is not an array:", promptsData);
+    }
+  }, []); // Run only once on mount
+
 
  const categories = useMemo(() => {
     // Derive categories from the locally stored prompts
@@ -53,20 +58,31 @@ export default function Home() {
   }, [prompts]);
 
   const filteredPrompts = useMemo(() => {
-    return prompts.filter(prompt => {
-      if (!prompt) return false; // Skip if prompt is somehow null/undefined
+     console.log("Filtering prompts with searchTerm:", searchTerm, "and selectedCategory:", selectedCategory);
+     const results = prompts.filter(prompt => {
+      if (!prompt || typeof prompt !== 'object') {
+         console.warn("Skipping invalid prompt entry:", prompt);
+         return false; // Skip if prompt is somehow null/undefined/not an object
+      }
 
+      // Ensure prompt properties exist and are strings before calling toLowerCase
       const lowerSearchTerm = searchTerm.toLowerCase();
-      const titleMatch = prompt.title?.toLowerCase().includes(lowerSearchTerm) ?? false;
-      const textMatch = prompt.text?.toLowerCase().includes(lowerSearchTerm) ?? false;
-      const categoryMatch = prompt.category?.toLowerCase().includes(lowerSearchTerm) ?? false; // Search in category too
+      const title = prompt.title ?? '';
+      const text = prompt.text ?? '';
+      const category = prompt.category ?? '';
+
+      const titleMatch = title.toLowerCase().includes(lowerSearchTerm);
+      const textMatch = text.toLowerCase().includes(lowerSearchTerm);
+      const categoryMatch = category.toLowerCase().includes(lowerSearchTerm); // Search in category too
 
       const matchesSearch = titleMatch || textMatch || categoryMatch;
 
-      const matchesCategory = selectedCategory === 'all' || prompt.category === selectedCategory;
+      const matchesCategory = selectedCategory === 'all' || category === selectedCategory;
 
       return matchesSearch && matchesCategory;
     });
+    console.log("Filtered prompts:", results.length);
+    return results;
   }, [prompts, searchTerm, selectedCategory]);
 
 
@@ -131,14 +147,19 @@ export default function Home() {
           </div>
 
           {/* Conditional rendering based on data availability */}
-          {filteredPrompts.length === 0 ? (
+           {prompts.length === 0 ? (
+             <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow">
+               <p className="text-lg font-medium">
+                 Loading prompts or no prompts available in the local data file.
+               </p>
+               <p className="text-sm mt-1">Please ensure `src/data/promptly-marketing.json` exists and contains valid prompt data.</p>
+             </div>
+           ) : filteredPrompts.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground bg-card/80 rounded p-4 shadow">
               <p className="text-lg font-medium">
-                {prompts.length === 0
-                  ? "No prompts available in the local data file." // Message if local data is empty
-                  : "No prompts match your search or filter."}
+                No prompts match your search or filter.
               </p>
-              {prompts.length > 0 && <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>}
+              <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>
             </div>
           ) : (
              // Display prompts using Masonry layout
@@ -149,7 +170,14 @@ export default function Home() {
               >
                {filteredPrompts.map((prompt) => (
                  // Add margin-bottom to each card for vertical spacing within columns
-                 <PromptCard key={prompt.id} prompt={prompt} className="mb-4" />
+                 // Ensure prompt has a valid id, title, and text before rendering
+                 (prompt && prompt.id && prompt.title && prompt.text) ? (
+                    <PromptCard key={prompt.id} prompt={prompt} className="mb-4" />
+                 ) : (
+                   <div key={prompt?.id || Math.random()} className="mb-4 p-4 bg-destructive/20 rounded border border-destructive text-destructive-foreground">
+                     Invalid prompt data encountered.
+                   </div>
+                 )
                ))}
               </Masonry>
           )}

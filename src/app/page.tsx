@@ -66,22 +66,26 @@ export default function Home() {
       }
 
       // Ensure prompt properties exist and are strings before calling toLowerCase
+      // Use empty string as fallback to avoid errors with null/undefined
       const lowerSearchTerm = searchTerm.toLowerCase();
-      const title = prompt.title ?? '';
-      const text = prompt.text ?? '';
-      const category = prompt.category ?? '';
+      const title = (prompt.title ?? '').toLowerCase();
+      const text = (prompt.text ?? '').toLowerCase();
+      const category = (prompt.category ?? '').toLowerCase(); // Use safe category access
 
-      const titleMatch = title.toLowerCase().includes(lowerSearchTerm);
-      const textMatch = text.toLowerCase().includes(lowerSearchTerm);
-      const categoryMatch = category.toLowerCase().includes(lowerSearchTerm); // Search in category too
+      const titleMatch = title.includes(lowerSearchTerm);
+      const textMatch = text.includes(lowerSearchTerm);
+      const categoryMatch = category.includes(lowerSearchTerm); // Search in category too
 
       const matchesSearch = titleMatch || textMatch || categoryMatch;
 
-      const matchesCategory = selectedCategory === 'all' || category === selectedCategory;
+       // Use safe category access for filtering as well
+      const currentCategory = prompt.category ?? '';
+      const matchesCategory = selectedCategory === 'all' || currentCategory === selectedCategory;
+
 
       return matchesSearch && matchesCategory;
     });
-    console.log("Filtered prompts:", results.length);
+    console.log("Filtered prompts:", results.length, results); // Log filtered results too
     return results;
   }, [prompts, searchTerm, selectedCategory]);
 
@@ -93,7 +97,8 @@ export default function Home() {
 
       <div className="relative z-10"> {/* Content wrapper */}
           <header className="mb-8 text-center">
-            <h1 className="text-4xl font-bold text-primary mb-2">Promptly</h1>
+             {/* Use text-primary-foreground (red) for title to match button */}
+            <h1 className="text-4xl font-bold text-primary-foreground mb-2">Promptly</h1>
             <p className="text-lg text-muted-foreground">
               Your Library for B2B Marketing Prompts
             </p>
@@ -170,12 +175,14 @@ export default function Home() {
               >
                {filteredPrompts.map((prompt) => (
                  // Add margin-bottom to each card for vertical spacing within columns
-                 // Ensure prompt has a valid id, and non-empty title and text before rendering
-                 (prompt && prompt.id && typeof prompt.title === 'string' && prompt.title.trim() && typeof prompt.text === 'string' && prompt.text.trim()) ? (
+                 // Check for basic prompt validity (id, title, text) before rendering the card
+                 (prompt && prompt.id && prompt.title && prompt.text) ? (
                     <PromptCard key={prompt.id} prompt={prompt} className="mb-4" />
                  ) : (
+                   // Render a placeholder or error message for invalid prompts
                    <div key={prompt?.id || Math.random()} className="mb-4 p-4 bg-destructive/20 rounded border border-destructive text-destructive-foreground">
-                     Invalid prompt data encountered (ID: {prompt?.id || 'N/A'}). Missing or empty title/text.
+                      <p className="font-medium">Invalid Prompt Data</p>
+                      <p className="text-xs">ID: {prompt?.id || 'N/A'}. Missing title or text.</p>
                    </div>
                  )
                ))}

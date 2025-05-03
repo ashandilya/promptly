@@ -18,13 +18,14 @@ interface PromptCardProps {
 export function PromptCard({ prompt, className }: PromptCardProps) {
   const { toast } = useToast(); // Initialize toast
 
-  // Fallback for missing or empty prompt data
-  const title = (prompt?.title && prompt.title.trim()) ? prompt.title.trim() : 'Untitled Prompt';
-  const text = (prompt?.text && prompt.text.trim()) ? prompt.text.trim() : 'No content available.';
-  const category = prompt?.category;
+  // Provide fallbacks for potentially missing properties
+  // Ensure the values used for display are always strings
+  const displayTitle = prompt?.title?.trim() || 'Untitled Prompt';
+  const displayText = prompt?.text?.trim() || 'No content available.';
+  const displayCategory = prompt?.category?.trim(); // Category is optional, can be undefined
 
   const handleCopy = () => {
-    // navigator.clipboard.writeText requires a secure context (HTTPS or localhost)
+    // Use the potentially empty displayText for copying. Disable button if no text.
     if (!navigator.clipboard) {
       toast({
         title: 'Error',
@@ -34,7 +35,7 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
       return;
     }
 
-    navigator.clipboard.writeText(text) // Use the safe 'text' variable
+    navigator.clipboard.writeText(displayText) // Copy the potentially empty text
       .then(() => {
         toast({
           title: "Copied!",
@@ -57,26 +58,27 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
         className // Apply className prop
         )}>
       <CardHeader className="pb-3">
-        {/* Use primary-foreground (red) for title to match button */}
-        <CardTitle className="text-lg font-semibold text-primary-foreground">{title}</CardTitle> {/* Use safe 'title' */}
-        {category && ( // Use safe 'category'
-          <Badge variant="secondary" className="mt-2 w-fit">{category}</Badge>
+        {/* Use primary-foreground (red) for title */}
+        <CardTitle className="text-lg font-semibold text-primary-foreground">{displayTitle}</CardTitle>
+        {displayCategory && ( // Only show badge if category exists and is not empty
+          <Badge variant="secondary" className="mt-2 w-fit capitalize">{displayCategory}</Badge>
         )}
       </CardHeader>
       <CardContent className="flex-grow pt-0 pb-4">
         {/* Use pre-wrap to preserve line breaks within the prompt text */}
-        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{text}</p> {/* Use safe 'text' */}
+        <p className="text-sm text-foreground/90 whitespace-pre-wrap">{displayText}</p>
       </CardContent>
       <CardFooter className="pt-0 pb-4 px-4 mt-auto"> {/* Added mt-auto to push footer down */}
         <Button
-          variant="default" // Use default variant which now uses primary (red background, white text)
+          variant="default" // Use default variant (red background, white text)
           size="sm"
           onClick={handleCopy}
           className={cn(
               "w-full transition-colors duration-200" // Simplified classes, rely on theme
           )}
-          aria-label={`Copy prompt: ${title}`} // Use safe 'title'
-          disabled={!text || text === 'No content available.'} // Disable button if no text to copy or only fallback text
+          aria-label={`Copy prompt: ${displayTitle}`}
+          // Disable button if there's no text to copy or only the fallback text
+          disabled={!displayText || displayText === 'No content available.'}
         >
           <ClipboardCopy className="mr-2 h-4 w-4" />
           Copy Prompt

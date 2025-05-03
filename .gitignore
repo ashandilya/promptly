@@ -35,8 +35,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Google Cloud key file (if used directly, though .env is preferred)
-*.json
-
 # patch-package
 /patches

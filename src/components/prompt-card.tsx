@@ -18,9 +18,9 @@ interface PromptCardProps {
 export function PromptCard({ prompt, className }: PromptCardProps) {
   const { toast } = useToast(); // Initialize toast
 
-  // Fallback for missing prompt data
-  const title = prompt?.title ?? 'Untitled Prompt';
-  const text = prompt?.text ?? 'No content available.';
+  // Fallback for missing or empty prompt data
+  const title = (prompt?.title && prompt.title.trim()) ? prompt.title.trim() : 'Untitled Prompt';
+  const text = (prompt?.text && prompt.text.trim()) ? prompt.text.trim() : 'No content available.';
   const category = prompt?.category;
 
   const handleCopy = () => {
@@ -76,7 +76,7 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
               "w-full transition-colors duration-200" // Simplified classes, rely on theme
           )}
           aria-label={`Copy prompt: ${title}`} // Use safe 'title'
-          disabled={!text} // Disable button if no text to copy
+          disabled={!text || text === 'No content available.'} // Disable button if no text to copy or only fallback text
         >
           <ClipboardCopy className="mr-2 h-4 w-4" />
           Copy Prompt

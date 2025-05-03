@@ -170,12 +170,12 @@ export default function Home() {
               >
                {filteredPrompts.map((prompt) => (
                  // Add margin-bottom to each card for vertical spacing within columns
-                 // Ensure prompt has a valid id, title, and text before rendering
-                 (prompt && prompt.id && prompt.title && prompt.text) ? (
+                 // Ensure prompt has a valid id, and non-empty title and text before rendering
+                 (prompt && prompt.id && typeof prompt.title === 'string' && prompt.title.trim() && typeof prompt.text === 'string' && prompt.text.trim()) ? (
                     <PromptCard key={prompt.id} prompt={prompt} className="mb-4" />
                  ) : (
                    <div key={prompt?.id || Math.random()} className="mb-4 p-4 bg-destructive/20 rounded border border-destructive text-destructive-foreground">
-                     Invalid prompt data encountered.
+                     Invalid prompt data encountered (ID: {prompt?.id || 'N/A'}). Missing or empty title/text.
                    </div>
                  )
                ))}

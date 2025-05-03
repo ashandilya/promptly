@@ -14,15 +14,12 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
-// Removed Masonry import: import Masonry from 'react-masonry-css';
+// Removed Masonry import as it's not installed/used
 import { SparklingStarfield } from '@/components/sparkling-starfield';
 import Link from 'next/link';
-// Removed Google Sheets import: import { fetchPromptsFromSheet } from '@/lib/sheets';
+// Removed Google Sheets import as data source is now local JSON
 import type { Prompt } from '@/types/prompt';
 import promptsData from '@/data/promptly-marketing.json'; // Import data from JSON file
-
-
-// Removed Masonry responsive breakpoints
 
 
 export default function Home() {

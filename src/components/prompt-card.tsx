@@ -58,8 +58,8 @@ export function PromptCard({ prompt }: PromptCardProps) {
         // Removed className prop application
         )}>
       <CardHeader className="pb-3">
-        {/* Use primary-foreground (red) for title */}
-        <CardTitle className="text-lg font-semibold text-primary-foreground">{displayTitle}</CardTitle>
+        {/* Use foreground (theme's main text color) for title */}
+        <CardTitle className="text-lg font-semibold text-foreground">{displayTitle}</CardTitle>
         {displayCategory && ( // Only show badge if category exists and is not empty
           <Badge variant="secondary" className="mt-2 w-fit capitalize">{displayCategory}</Badge>
         )}

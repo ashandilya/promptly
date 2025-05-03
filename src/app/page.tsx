@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -93,8 +94,8 @@ export default function Home() {
 
       <div className="relative z-10"> {/* Content wrapper */}
           <header className="mb-8 text-center">
-             {/* Use text-primary-foreground (red) for title to match button */}
-            <h1 className="text-4xl font-bold text-primary-foreground mb-2">Promptly</h1>
+             {/* Use text-foreground (theme's main text color) for title */}
+            <h1 className="text-4xl font-bold text-foreground mb-2">Promptly</h1>
             <p className="text-lg text-muted-foreground">
               Your Library for B2B Marketing Prompts
             </p>

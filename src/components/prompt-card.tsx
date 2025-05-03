@@ -12,10 +12,10 @@ import { cn } from '@/lib/utils';
 
 interface PromptCardProps {
   prompt: Prompt;
-  className?: string; // Add className prop
+  // Removed className prop
 }
 
-export function PromptCard({ prompt, className }: PromptCardProps) {
+export function PromptCard({ prompt }: PromptCardProps) {
   const { toast } = useToast(); // Initialize toast
 
   // Provide fallbacks for potentially missing properties
@@ -54,8 +54,8 @@ export function PromptCard({ prompt, className }: PromptCardProps) {
 
   return (
     <Card className={cn(
-        "flex flex-col bg-card shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg overflow-hidden border border-border",
-        className // Apply className prop
+        "flex flex-col bg-card shadow-md hover:shadow-lg transition-shadow duration-300 rounded-lg overflow-hidden border border-border"
+        // Removed className prop application
         )}>
       <CardHeader className="pb-3">
         {/* Use primary-foreground (red) for title */}

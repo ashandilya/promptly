@@ -13,19 +13,15 @@ import {
 } from '@/components/ui/select';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal } from 'lucide-react';
-import Masonry from 'react-masonry-css';
+// Removed Masonry import: import Masonry from 'react-masonry-css';
 import { SparklingStarfield } from '@/components/sparkling-starfield';
 import Link from 'next/link';
 // Removed Google Sheets import: import { fetchPromptsFromSheet } from '@/lib/sheets';
 import type { Prompt } from '@/types/prompt';
 import promptsData from '@/data/promptly-marketing.json'; // Import data from JSON file
 
-// Masonry responsive breakpoints
-const breakpointColumnsObj = {
-  default: 3,
-  1100: 2,
-  700: 1
-};
+
+// Removed Masonry responsive breakpoints
 
 
 export default function Home() {
@@ -167,26 +163,21 @@ export default function Home() {
               <p className="text-sm mt-1">Try adjusting your search term or category filter.</p>
             </div>
           ) : (
-             // Display prompts using Masonry layout
-              <Masonry
-                breakpointCols={breakpointColumnsObj}
-                className="flex w-auto -ml-4" // Adjust negative margin to counteract padding on items
-                columnClassName="pl-4 bg-clip-padding" // Add padding to columns
-              >
+             // Display prompts using a simple responsive grid
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                {filteredPrompts.map((prompt) => (
-                 // Add margin-bottom to each card for vertical spacing within columns
                  // Check for basic prompt validity (id, title, text) before rendering the card
                  (prompt && prompt.id && prompt.title && prompt.text) ? (
-                    <PromptCard key={prompt.id} prompt={prompt} className="mb-4" />
+                    <PromptCard key={prompt.id} prompt={prompt} /> // Removed className mb-4 as grid gap handles spacing
                  ) : (
                    // Render a placeholder or error message for invalid prompts
-                   <div key={prompt?.id || Math.random()} className="mb-4 p-4 bg-destructive/20 rounded border border-destructive text-destructive-foreground">
+                   <div key={prompt?.id || Math.random()} className="p-4 bg-destructive/20 rounded border border-destructive text-destructive-foreground">
                       <p className="font-medium">Invalid Prompt Data</p>
                       <p className="text-xs">ID: {prompt?.id || 'N/A'}. Missing title or text.</p>
                    </div>
                  )
                ))}
-              </Masonry>
+              </div>
           )}
       </div>
     </main>

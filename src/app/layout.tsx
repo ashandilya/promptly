@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster'; // Import Toaster
 import Script from 'next/script'; // Import the Script component
+import { Footer } from '@/components/footer';
 // Removed Head import
 
 export const metadata: Metadata = {
@@ -26,8 +27,11 @@ export default function RootLayout({
         data-website-id="e684e1e1-21bd-4486-97fa-67777b352d0b"
       />
       {/* Apply font class and antialiased for better rendering */}
-      <body className={`font-styrene antialiased`}>
-        {children}
+      <body className={`font-styrene antialiased min-h-screen flex flex-col`}>
+        <div className="flex-grow">
+          {children}
+        </div>
+        <Footer />
         <Toaster /> {/* Add Toaster component */}
       </body>
     </html>

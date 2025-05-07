@@ -16,7 +16,7 @@ body {
     --popover: 0 0% 100%; /* White */
     --popover-foreground: 208 100% 15%; /* Dark Blue Text */
     --primary: 0 0% 100%; /* White for Button Text */
-    --primary-foreground: 0 75% 55%; /* Red for Button Background */
+    --primary-foreground: 252 100% 67%; /* #6556FF for Button Background */
     --secondary: 0 0% 94%; /* Lighter Gray */
     --secondary-foreground: 208 100% 15%; /* Dark Blue Text */
     --muted: 0 0% 96.1%; /* Near White */
